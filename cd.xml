@@ -21,7 +21,7 @@
             />
 
             <file
-                name="SOUTH_SILENCE.EXE"
+                name="SILENCE.EXE"
                 type="data"
                 source="${PROJECT_BINARY_DIR}/south_silence.exe"
             />
