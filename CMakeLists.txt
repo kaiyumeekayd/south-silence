@@ -12,4 +12,5 @@ psn00bsdk_add_cd_image(
     south_silence_cd
     south_silence
     ${PROJECT_SOURCE_DIR}/cd.xml
+    DEPENDS south_silence
 )
