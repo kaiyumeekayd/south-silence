@@ -11,23 +11,19 @@ static DRAWENV draw;
 static u_long ot[OT_LEN];
 static POLY_F3 poly;
 
-/* Vértices do triângulo em 3D */
 static SVECTOR vertices[3] = {
     {-60,  50, 400, 0},
     { 60,  50, 400, 0},
     {  0, -60, 400, 0}
 };
 
-/* Coordenadas resultantes na tela */
-static long screen_x[3];
-static long screen_y[3];
-
 int main(void)
 {
     MATRIX matrix;
-    VECTOR position;
-    long depth;
-    long flag;
+
+    long sx0, sy0, sz0, flag0;
+    long sx1, sy1, sz1, flag1;
+    long sx2, sy2, sz2, flag2;
 
     ResetGraph(0);
 
@@ -44,27 +40,15 @@ int main(void)
 
     SetDispMask(1);
 
-    /* Inicializa o GTE */
     InitGeom();
 
-    /* Centro da tela */
-    SetGeomOffset(160, 120);
+    gte_SetGeomOffset(160, 120);
+    gte_SetGeomScreen(256);
 
-    /* Distância focal */
-    SetGeomScreen(256);
-
-    /* Câmera sem rotação */
     RotMatrix(&((SVECTOR){0, 0, 0, 0}), &matrix);
 
-    /* Posição da câmera */
-    position.vx = 0;
-    position.vy = 0;
-    position.vz = 0;
-
-    TransMatrix(&matrix, &position);
-
-    SetRotMatrix(&matrix);
-    SetTransMatrix(&matrix);
+    gte_SetRotMatrix(&matrix);
+    gte_SetTransMatrix(&matrix);
 
     while (1)
     {
@@ -73,22 +57,26 @@ int main(void)
 
         ClearOTagR(ot, OT_LEN);
 
-        /*
-         * Transforma os três vértices 3D
-         * em coordenadas 2D.
-         */
-        for (int i = 0; i < 3; i++)
-        {
-            SVECTOR *v = &vertices[i];
+        gte_RotTransPers(
+            &vertices[0],
+            &sx0, &sy0,
+            &sz0,
+            &flag0
+        );
 
-            flag = RotTransPers(
-                v,
-                (long *)&screen_x[i],
-                (long *)&screen_y[i],
-                &depth,
-                &flag
-            );
-        }
+        gte_RotTransPers(
+            &vertices[1],
+            &sx1, &sy1,
+            &sz1,
+            &flag1
+        );
+
+        gte_RotTransPers(
+            &vertices[2],
+            &sx2, &sy2,
+            &sz2,
+            &flag2
+        );
 
         setPolyF3(&poly);
 
@@ -96,9 +84,9 @@ int main(void)
 
         setXY3(
             &poly,
-            screen_x[0], screen_y[0],
-            screen_x[1], screen_y[1],
-            screen_x[2], screen_y[2]
+            sx0, sy0,
+            sx1, sy1,
+            sx2, sy2
         );
 
         addPrim(&ot[0], &poly);
