@@ -1,8 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<iso_project image_name="south_silence" cue_sheet="south_silence.cue">
+
+<iso_project image_name="south_silence.bin" cue_sheet="south_silence.cue">
+
     <track type="data">
-        <filesystem>
-            <file name="SOUTH_SILENCE.EXE" type="data" source="${PROJECT_BINARY_DIR}/south_silence.exe"/>
-        </filesystem>
+
+        <identifiers
+            system="PLAYSTATION"
+            application="PLAYSTATION"
+            volume="SOUTHSILENCE"
+            volume_set="SOUTHSILENCE"
+            publisher="KAY"
+        />
+
+        <directory_tree>
+
+            <file
+                name="SYSTEM.CNF"
+                type="data"
+                source="${PROJECT_SOURCE_DIR}/system.cnf"
+            />
+
+            <file
+                name="SOUTH_SILENCE.EXE"
+                type="data"
+                source="${PROJECT_BINARY_DIR}/south_silence.exe"
+            />
+
+        </directory_tree>
+
     </track>
+
 </iso_project>
