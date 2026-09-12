@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<iso_project image_name="south_silence" cue_sheet="south_silence.cue">
+    <track type="data">
+        <filesystem>
+            <file name="SOUTH_SILENCE.EXE" type="data" source="${PROJECT_BINARY_DIR}/south_silence.exe"/>
+        </filesystem>
+    </track>
+</iso_project>
