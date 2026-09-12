@@ -24,6 +24,32 @@ static int project_y(Vertex3D v)
     return 120 - (int)((v.y * FOCAL_LENGTH) / v.z);
 }
 
+static void draw_triangle(
+    uint32_t *ot,
+    Vertex3D a,
+    Vertex3D b,
+    Vertex3D c,
+    int r,
+    int g,
+    int bcol
+)
+{
+    POLY_F3 poly;
+
+    setPolyF3(&poly);
+
+    setRGB0(&poly, r, g, bcol);
+
+    setXY3(
+        &poly,
+        project_x(a), project_y(a),
+        project_x(b), project_y(b),
+        project_x(c), project_y(c)
+    );
+
+    addPrim(&ot[0], &poly);
+}
+
 int main(void)
 {
     DISPENV disp;
@@ -31,10 +57,24 @@ int main(void)
 
     ResetGraph(0);
 
-    SetDefDispEnv(&disp, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SetDefDrawEnv(&draw, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SetDefDispEnv(
+        &disp,
+        0,
+        0,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT
+    );
+
+    SetDefDrawEnv(
+        &draw,
+        0,
+        0,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT
+    );
 
     setRGB0(&draw, 12, 12, 16);
+
     draw.isbg = 1;
 
     PutDispEnv(&disp);
@@ -43,52 +83,134 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * Três pontos no espaço 3D.
+     * CUBO 3D
      *
-     * Os dois primeiros estão a Z=350.
-     * O terceiro está mais distante, em Z=500.
+     * Frente: Z = 300
+     * Trás:   Z = 500
      *
-     * Isso cria perspectiva.
+     * O fundo está mais distante,
+     * portanto aparece menor.
      */
-    Vertex3D vertices[3] =
+
+    Vertex3D v[8] =
     {
-        { -80,  60, 350 },
-        {  80,  60, 350 },
-        {   0, -60, 500 }
+        /* frente */
+        { -70, -70, 300 },
+        {  70, -70, 300 },
+        {  70,  70, 300 },
+        { -70,  70, 300 },
+
+        /* trás */
+        { -70, -70, 500 },
+        {  70, -70, 500 },
+        {  70,  70, 500 },
+        { -70,  70, 500 }
     };
-
-    int x0 = project_x(vertices[0]);
-    int y0 = project_y(vertices[0]);
-
-    int x1 = project_x(vertices[1]);
-    int y1 = project_y(vertices[1]);
-
-    int x2 = project_x(vertices[2]);
-    int y2 = project_y(vertices[2]);
 
     uint32_t ot[1];
 
-    ClearOTagR(ot, 1);
-
-    POLY_F3 triangle;
-
-    setPolyF3(&triangle);
-
-    setRGB0(&triangle, 100, 100, 100);
-
-    setXY3(
-        &triangle,
-        x0, y0,
-        x2, y2,
-        x1, y1
-    );
-
-    addPrim(&ot[0], &triangle);
-
-    DrawOTag(&ot[0]);
-
     while (1)
     {
+        ClearOTagR(ot, 1);
+
+        /*
+         * Frente
+         */
+
+        draw_triangle(
+            ot,
+            v[0], v[1], v[2],
+            120, 120, 120
+        );
+
+        draw_triangle(
+            ot,
+            v[0], v[2], v[3],
+            120, 120, 120
+        );
+
+        /*
+         * Trás
+         */
+
+        draw_triangle(
+            ot,
+            v[4], v[6], v[5],
+            70, 70, 70
+        );
+
+        draw_triangle(
+            ot,
+            v[4], v[7], v[6],
+            70, 70, 70
+        );
+
+        /*
+         * Lado esquerdo
+         */
+
+        draw_triangle(
+            ot,
+            v[0], v[3], v[7],
+            90, 90, 90
+        );
+
+        draw_triangle(
+            ot,
+            v[0], v[7], v[4],
+            90, 90, 90
+        );
+
+        /*
+         * Lado direito
+         */
+
+        draw_triangle(
+            ot,
+            v[1], v[5], v[6],
+            100, 100, 100
+        );
+
+        draw_triangle(
+            ot,
+            v[1], v[6], v[2],
+            100, 100, 100
+        );
+
+        /*
+         * Topo
+         */
+
+        draw_triangle(
+            ot,
+            v[3], v[2], v[6],
+            110, 110, 110
+        );
+
+        draw_triangle(
+            ot,
+            v[3], v[6], v[7],
+            110, 110, 110
+        );
+
+        /*
+         * Baixo
+         */
+
+        draw_triangle(
+            ot,
+            v[0], v[4], v[5],
+            60, 60, 60
+        );
+
+        draw_triangle(
+            ot,
+            v[0], v[5], v[1],
+            60, 60, 60
+        );
+
+        DrawOTag(&ot[0]);
+
         VSync(0);
     }
 
