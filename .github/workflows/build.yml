@@ -20,7 +20,7 @@ jobs:
             -v "${{ github.workspace }}:/source" \
             -w /source \
             luksamuk/psxtoolchain:latest \
-            /bin/bash -c "cmake --preset default && cmake --build build"
+            /bin/bash -c "set -x; echo '=== ARQUIVOS DO PROJETO ==='; find . -maxdepth 3 -type f; echo '=== VARIAVEIS PSN00BSDK ==='; env | grep PSN00BSDK || true; echo '=== CMAKE ==='; cmake --version; echo '=== CONFIGURANDO ==='; cmake --preset default; echo '=== COMPILANDO ==='; cmake --build build; echo '=== RESULTADO ==='; find . -maxdepth 3 -type f"
 
       - name: Verificar arquivos
         run: |
