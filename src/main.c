@@ -7,12 +7,20 @@
 
 #define FOCAL_LENGTH 256
 
+#define OT_LENGTH 16
+
 typedef struct
 {
     long x;
     long y;
     long z;
 } Vertex3D;
+
+typedef struct
+{
+    POLY_F3 polygons[2];
+    uint32_t ot[OT_LENGTH];
+} RenderContext;
 
 static int project_x(Vertex3D v)
 {
@@ -29,14 +37,7 @@ int main(void)
     DISPENV disp;
     DRAWENV draw;
 
-    /*
-     * Os polígonos precisam continuar existindo
-     * até DrawOTag().
-     */
-    POLY_F3 poly0;
-    POLY_F3 poly1;
-
-    uint32_t ot[1];
+    RenderContext ctx;
 
     ResetGraph(0);
 
@@ -66,16 +67,7 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * QUATRO VÉRTICES EM 3D
-     *
-     * Frente:
-     * v0 ---- v1
-     *
-     * Fundo:
-     * v3 ---- v2
-     *
-     * O fundo está em Z=500,
-     * portanto aparece menor.
+     * QUATRO VÉRTICES 3D
      */
 
     Vertex3D v0 = { -90,  70, 350 };
@@ -85,23 +77,26 @@ int main(void)
 
     while (1)
     {
-        ClearOTagR(ot, 1);
+        ClearOTagR(
+            ctx.ot,
+            OT_LENGTH
+        );
 
         /*
-         * Primeiro triângulo
+         * TRIÂNGULO 1
          */
 
-        setPolyF3(&poly0);
+        setPolyF3(&ctx.polygons[0]);
 
         setRGB0(
-            &poly0,
+            &ctx.polygons[0],
             140,
             140,
             140
         );
 
         setXY3(
-            &poly0,
+            &ctx.polygons[0],
 
             project_x(v0),
             project_y(v0),
@@ -114,20 +109,20 @@ int main(void)
         );
 
         /*
-         * Segundo triângulo
+         * TRIÂNGULO 2
          */
 
-        setPolyF3(&poly1);
+        setPolyF3(&ctx.polygons[1]);
 
         setRGB0(
-            &poly1,
+            &ctx.polygons[1],
             100,
             100,
             100
         );
 
         setXY3(
-            &poly1,
+            &ctx.polygons[1],
 
             project_x(v0),
             project_y(v0),
@@ -140,14 +135,29 @@ int main(void)
         );
 
         /*
-         * Agora os dois polígonos ainda existem
-         * quando DrawOTag() for executado.
+         * Os dois polígonos entram
+         * no nível 1 da Ordering Table.
          */
 
-        addPrim(&ot[0], &poly0);
-        addPrim(&ot[0], &poly1);
+        addPrim(
+            &ctx.ot[1],
+            &ctx.polygons[0]
+        );
 
-        DrawOTag(&ot[0]);
+        addPrim(
+            &ctx.ot[1],
+            &ctx.polygons[1]
+        );
+
+        /*
+         * A partir daqui usamos o último
+         * nível da Ordering Table como
+         * ponto inicial da GPU.
+         */
+
+        DrawOTag(
+            &ctx.ot[OT_LENGTH - 1]
+        );
 
         VSync(0);
     }
