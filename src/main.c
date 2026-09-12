@@ -28,17 +28,14 @@ static void draw_triangle(
     uint32_t *ot,
     Vertex3D a,
     Vertex3D b,
-    Vertex3D c,
-    int r,
-    int g,
-    int bcol
+    Vertex3D c
 )
 {
     POLY_F3 poly;
 
     setPolyF3(&poly);
 
-    setRGB0(&poly, r, g, bcol);
+    setRGB0(&poly, 130, 130, 130);
 
     setXY3(
         &poly,
@@ -74,7 +71,6 @@ int main(void)
     );
 
     setRGB0(&draw, 12, 12, 16);
-
     draw.isbg = 1;
 
     PutDispEnv(&disp);
@@ -83,29 +79,18 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * CUBO 3D
+     * QUADRADO 3D
      *
-     * Frente: Z = 300
-     * Trás:   Z = 500
+     * Os quatro pontos estão no espaço 3D.
      *
-     * O fundo está mais distante,
-     * portanto aparece menor.
+     * Os pontos superiores estão mais longe
+     * do centro da câmera.
      */
 
-    Vertex3D v[8] =
-    {
-        /* frente */
-        { -70, -70, 300 },
-        {  70, -70, 300 },
-        {  70,  70, 300 },
-        { -70,  70, 300 },
-
-        /* trás */
-        { -70, -70, 500 },
-        {  70, -70, 500 },
-        {  70,  70, 500 },
-        { -70,  70, 500 }
-    };
+    Vertex3D v0 = { -90,  70, 350 };
+    Vertex3D v1 = {  90,  70, 350 };
+    Vertex3D v2 = {  70, -70, 500 };
+    Vertex3D v3 = { -70, -70, 500 };
 
     uint32_t ot[1];
 
@@ -114,99 +99,23 @@ int main(void)
         ClearOTagR(ot, 1);
 
         /*
-         * Frente
+         * Primeira metade do quadrado
          */
-
         draw_triangle(
             ot,
-            v[0], v[1], v[2],
-            120, 120, 120
-        );
-
-        draw_triangle(
-            ot,
-            v[0], v[2], v[3],
-            120, 120, 120
+            v0,
+            v1,
+            v2
         );
 
         /*
-         * Trás
+         * Segunda metade do quadrado
          */
-
         draw_triangle(
             ot,
-            v[4], v[6], v[5],
-            70, 70, 70
-        );
-
-        draw_triangle(
-            ot,
-            v[4], v[7], v[6],
-            70, 70, 70
-        );
-
-        /*
-         * Lado esquerdo
-         */
-
-        draw_triangle(
-            ot,
-            v[0], v[3], v[7],
-            90, 90, 90
-        );
-
-        draw_triangle(
-            ot,
-            v[0], v[7], v[4],
-            90, 90, 90
-        );
-
-        /*
-         * Lado direito
-         */
-
-        draw_triangle(
-            ot,
-            v[1], v[5], v[6],
-            100, 100, 100
-        );
-
-        draw_triangle(
-            ot,
-            v[1], v[6], v[2],
-            100, 100, 100
-        );
-
-        /*
-         * Topo
-         */
-
-        draw_triangle(
-            ot,
-            v[3], v[2], v[6],
-            110, 110, 110
-        );
-
-        draw_triangle(
-            ot,
-            v[3], v[6], v[7],
-            110, 110, 110
-        );
-
-        /*
-         * Baixo
-         */
-
-        draw_triangle(
-            ot,
-            v[0], v[4], v[5],
-            60, 60, 60
-        );
-
-        draw_triangle(
-            ot,
-            v[0], v[5], v[1],
-            60, 60, 60
+            v0,
+            v2,
+            v3
         );
 
         DrawOTag(&ot[0]);
