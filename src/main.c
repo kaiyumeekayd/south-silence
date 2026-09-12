@@ -24,33 +24,19 @@ static int project_y(Vertex3D v)
     return 120 - (int)((v.y * FOCAL_LENGTH) / v.z);
 }
 
-static void draw_triangle(
-    uint32_t *ot,
-    Vertex3D a,
-    Vertex3D b,
-    Vertex3D c
-)
-{
-    POLY_F3 poly;
-
-    setPolyF3(&poly);
-
-    setRGB0(&poly, 130, 130, 130);
-
-    setXY3(
-        &poly,
-        project_x(a), project_y(a),
-        project_x(b), project_y(b),
-        project_x(c), project_y(c)
-    );
-
-    addPrim(&ot[0], &poly);
-}
-
 int main(void)
 {
     DISPENV disp;
     DRAWENV draw;
+
+    /*
+     * Os polígonos precisam continuar existindo
+     * até DrawOTag().
+     */
+    POLY_F3 poly0;
+    POLY_F3 poly1;
+
+    uint32_t ot[1];
 
     ResetGraph(0);
 
@@ -71,6 +57,7 @@ int main(void)
     );
 
     setRGB0(&draw, 12, 12, 16);
+
     draw.isbg = 1;
 
     PutDispEnv(&disp);
@@ -79,12 +66,16 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * QUADRADO 3D
+     * QUATRO VÉRTICES EM 3D
      *
-     * Os quatro pontos estão no espaço 3D.
+     * Frente:
+     * v0 ---- v1
      *
-     * Os pontos superiores estão mais longe
-     * do centro da câmera.
+     * Fundo:
+     * v3 ---- v2
+     *
+     * O fundo está em Z=500,
+     * portanto aparece menor.
      */
 
     Vertex3D v0 = { -90,  70, 350 };
@@ -92,31 +83,69 @@ int main(void)
     Vertex3D v2 = {  70, -70, 500 };
     Vertex3D v3 = { -70, -70, 500 };
 
-    uint32_t ot[1];
-
     while (1)
     {
         ClearOTagR(ot, 1);
 
         /*
-         * Primeira metade do quadrado
+         * Primeiro triângulo
          */
-        draw_triangle(
-            ot,
-            v0,
-            v1,
-            v2
+
+        setPolyF3(&poly0);
+
+        setRGB0(
+            &poly0,
+            140,
+            140,
+            140
+        );
+
+        setXY3(
+            &poly0,
+
+            project_x(v0),
+            project_y(v0),
+
+            project_x(v1),
+            project_y(v1),
+
+            project_x(v2),
+            project_y(v2)
         );
 
         /*
-         * Segunda metade do quadrado
+         * Segundo triângulo
          */
-        draw_triangle(
-            ot,
-            v0,
-            v2,
-            v3
+
+        setPolyF3(&poly1);
+
+        setRGB0(
+            &poly1,
+            100,
+            100,
+            100
         );
+
+        setXY3(
+            &poly1,
+
+            project_x(v0),
+            project_y(v0),
+
+            project_x(v2),
+            project_y(v2),
+
+            project_x(v3),
+            project_y(v3)
+        );
+
+        /*
+         * Agora os dois polígonos ainda existem
+         * quando DrawOTag() for executado.
+         */
+
+        addPrim(&ot[0], &poly0);
+        addPrim(&ot[0], &poly1);
 
         DrawOTag(&ot[0]);
 
