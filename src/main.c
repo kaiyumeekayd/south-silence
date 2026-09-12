@@ -13,10 +13,9 @@ int main(void)
     SetDefDispEnv(&disp, 0, 0, 320, 240);
     SetDefDrawEnv(&draw, 0, 0, 320, 240);
 
-    draw.isbg = 1;
-    draw.r = 80;
-    draw.g = 0;
-    draw.b = 0;
+    draw.r0 = 80;
+draw.g0 = 0;
+draw.b0 = 0;
 
     PutDispEnv(&disp);
     PutDrawEnv(&draw);
