@@ -17,13 +17,19 @@ jobs:
       - name: Compilar South Silence
         run: |
           docker run --rm \
-            -v "$PWD:/source" \
+            -v "${{ github.workspace }}:/source" \
             -w /source \
             luksamuk/psxtoolchain:latest \
-            bash -lc 'cmake --preset default . && cmake --build build'
+            /bin/bash -c "cmake --preset default && cmake --build build"
+
+      - name: Verificar arquivos
+        run: |
+          echo "Arquivos produzidos:"
+          find build -type f 2>/dev/null || true
 
       - name: Salvar arquivos compilados
         uses: actions/upload-artifact@v4
         with:
           name: south-silence-build
-          path: build/**
+          path: build/
+          if-no-files-found: error
