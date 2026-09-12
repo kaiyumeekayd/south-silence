@@ -1,97 +1,97 @@
 #include <sys/types.h>
 #include <psxgpu.h>
 #include <psxgte.h>
-#include <psxapi.h>
+#include <psxetc.h>
 
-#define OT_LEN 8
+#define SCREEN_WIDTH  320
+#define SCREEN_HEIGHT 240
 
-static DISPENV disp;
-static DRAWENV draw;
+#define FOCAL_LENGTH 256
 
-static u_long ot[OT_LEN];
-static POLY_F3 poly;
+typedef struct
+{
+    long x;
+    long y;
+    long z;
+} Vertex3D;
 
-static SVECTOR vertices[3] = {
-    {-60,  50, 400, 0},
-    { 60,  50, 400, 0},
-    {  0, -60, 400, 0}
-};
+/* Projeta um ponto 3D para a tela */
+static int project_x(Vertex3D v)
+{
+    return 160 + (int)((v.x * FOCAL_LENGTH) / v.z);
+}
+
+static int project_y(Vertex3D v)
+{
+    return 120 - (int)((v.y * FOCAL_LENGTH) / v.z);
+}
 
 int main(void)
 {
-    MATRIX matrix;
+    DISPENV disp;
+    DRAWENV draw;
 
-    long sx0, sy0, sz0, flag0;
-    long sx1, sy1, sz1, flag1;
-    long sx2, sy2, sz2, flag2;
-
-    ResetGraph(0);
-
-    SetDefDispEnv(&disp, 0, 0, 320, 240);
-    SetDefDrawEnv(&draw, 0, 0, 320, 240);
+    /* Inicializa vídeo */
+    SetDefDispEnv(&disp, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SetDefDrawEnv(&draw, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     draw.isbg = 1;
-    draw.r0 = 15;
-    draw.g0 = 15;
-    draw.b0 = 15;
+    draw.r0 = 12;
+    draw.g0 = 12;
+    draw.b0 = 16;
 
     PutDispEnv(&disp);
     PutDrawEnv(&draw);
 
     SetDispMask(1);
 
-    InitGeom();
+    /* Triângulo 3D.
+       Cada vértice possui X, Y e Z.
+       Z diferente demonstra perspectiva. */
+    Vertex3D vertices[3] =
+    {
+        { -80,  60, 350 },
+        {  80,  60, 350 },
+        {   0, -60, 500 }
+    };
 
-    gte_SetGeomOffset(160, 120);
-    gte_SetGeomScreen(256);
+    /* Projeta os três vértices */
+    int x0 = project_x(vertices[0]);
+    int y0 = project_y(vertices[0]);
 
-    RotMatrix(&((SVECTOR){0, 0, 0, 0}), &matrix);
+    int x1 = project_x(vertices[1]);
+    int y1 = project_y(vertices[1]);
 
-    gte_SetRotMatrix(&matrix);
-    gte_SetTransMatrix(&matrix);
+    int x2 = project_x(vertices[2]);
+    int y2 = project_y(vertices[2]);
 
+    /* Ordenation Table */
+    OT ot[1];
+
+    ClearOTagR(ot, 1);
+
+    /* Triângulo */
+    POLY_F3 triangle;
+
+    setPolyF3(&triangle);
+
+    setRGB0(&triangle, 100, 100, 100);
+
+    setXY3(
+        &triangle,
+        x0, y0,
+        x1, y1,
+        x2, y2
+    );
+
+    addPrim(&ot[0], &triangle);
+
+    DrawOTag(&ot[0]);
+
+    /* Mantém a tela ativa */
     while (1)
     {
-        DrawSync(0);
         VSync(0);
-
-        ClearOTagR(ot, OT_LEN);
-
-        gte_RotTransPers(
-            &vertices[0],
-            &sx0, &sy0,
-            &sz0,
-            &flag0
-        );
-
-        gte_RotTransPers(
-            &vertices[1],
-            &sx1, &sy1,
-            &sz1,
-            &flag1
-        );
-
-        gte_RotTransPers(
-            &vertices[2],
-            &sx2, &sy2,
-            &sz2,
-            &flag2
-        );
-
-        setPolyF3(&poly);
-
-        setRGB0(&poly, 180, 180, 180);
-
-        setXY3(
-            &poly,
-            sx0, sy0,
-            sx1, sy1,
-            sx2, sy2
-        );
-
-        addPrim(&ot[0], &poly);
-
-        DrawOTag(&ot[0]);
     }
 
     return 0;
