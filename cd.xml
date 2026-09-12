@@ -23,7 +23,7 @@
             <file
                 name="SILENCE.EXE"
                 type="data"
-                source="${PROJECT_BINARY_DIR}/south_silence.exe"
+                source="${PROJECT_BINARY_DIR}/south_silence"
             />
 
         </directory_tree>
