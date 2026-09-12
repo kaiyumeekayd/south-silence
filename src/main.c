@@ -5,7 +5,23 @@
 
 int main(void)
 {
+    DISPENV disp;
+    DRAWENV draw;
+
     ResetGraph(0);
+
+    SetDefDispEnv(&disp, 0, 0, 320, 240);
+    SetDefDrawEnv(&draw, 0, 0, 320, 240);
+
+    draw.isbg = 1;
+    draw.r = 80;
+    draw.g = 0;
+    draw.b = 0;
+
+    PutDispEnv(&disp);
+    PutDrawEnv(&draw);
+
+    DrawSync(0);
 
     while (1)
     {
