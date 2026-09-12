@@ -28,26 +28,25 @@ int main(void)
 
     SetDispMask(1);
 
-    ClearOTagR(ot, OT_LEN);
-
     setPolyF4(&poly);
-
     setRGB0(&poly, 120, 120, 120);
 
     setXY4(
         &poly,
-        100, 70,
-        220, 70,
-        240, 190,
-        80, 190
+        80, 60,
+        240, 60,
+        240, 180,
+        80, 180
     );
-
-    addPrim(&ot[OT_LEN - 1], &poly);
 
     while (1)
     {
         DrawSync(0);
         VSync(0);
+
+        ClearOTagR(ot, OT_LEN);
+
+        addPrim(&ot[0], &poly);
 
         DrawOTag(&ot[0]);
     }
