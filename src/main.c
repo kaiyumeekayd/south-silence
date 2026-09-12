@@ -221,8 +221,14 @@ int main(void)
             );
         }
 
+        /*
+         * Começa a execução da OT
+         * exatamente onde os polígonos
+         * foram colocados.
+         */
+
         DrawOTag(
-            &ctx.ot[OT_LENGTH - 1]
+            &ctx.ot[1]
         );
 
         VSync(0);
