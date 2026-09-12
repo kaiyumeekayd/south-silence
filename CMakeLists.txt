@@ -9,7 +9,7 @@ psn00bsdk_add_executable(
 )
 
 psn00bsdk_add_cd_image(
-    south_silence
+    south_silence_cd
     south_silence
     ${PROJECT_SOURCE_DIR}/cd.xml
 )
