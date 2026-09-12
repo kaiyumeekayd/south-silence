@@ -66,7 +66,7 @@ int main(void)
     int y2 = project_y(vertices[2]);
 
     /* Ordenation Table */
-    OT ot[1];
+    uint32_t ot[1];
 
     ClearOTagR(ot, 1);
 
