@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <psxgpu.h>
 #include <psxetc.h>
 
@@ -14,35 +13,14 @@ int main(void)
     SetDefDrawEnv(&draw, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     draw.isbg = 1;
-    draw.r0 = 12;
-    draw.g0 = 12;
-    draw.b0 = 16;
+    draw.r0 = 100;
+    draw.g0 = 0;
+    draw.b0 = 0;
 
     PutDispEnv(&disp);
     PutDrawEnv(&draw);
 
     SetDispMask(1);
-
-    uint32_t ot[1];
-
-    ClearOTagR(ot, 1);
-
-    POLY_F3 triangle;
-
-    setPolyF3(&triangle);
-
-    setRGB0(&triangle, 100, 100, 100);
-
-    setXY3(
-        &triangle,
-        80, 180,
-        160, 60,
-        240, 180
-    );
-
-    addPrim(&ot[0], &triangle);
-
-    DrawOTag(&ot[0]);
 
     while (1)
     {
