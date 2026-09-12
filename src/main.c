@@ -14,11 +14,14 @@ int main(void)
     SetDefDrawEnv(&draw, 0, 0, 320, 240);
 
     draw.r0 = 80;
-draw.g0 = 0;
-draw.b0 = 0;
+    draw.g0 = 0;
+    draw.b0 = 0;
+    draw.isbg = 1;
 
     PutDispEnv(&disp);
     PutDrawEnv(&draw);
+
+    SetDispMask(1);
 
     DrawSync(0);
 
