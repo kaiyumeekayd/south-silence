@@ -1,0 +1,29 @@
+name: Build South Silence PS1
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Compilar South Silence
+        run: |
+          docker run --rm \
+            -v "$PWD:/source" \
+            -w /source \
+            luksamuk/psxtoolchain:latest \
+            bash -lc 'cmake --preset default . && cmake --build build'
+
+      - name: Salvar arquivos compilados
+        uses: actions/upload-artifact@v4
+        with:
+          name: south-silence-build
+          path: build/**
