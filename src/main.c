@@ -9,7 +9,7 @@ static DISPENV disp;
 static DRAWENV draw;
 
 static u_long ot[OT_LEN];
-static POLY_F4 poly;
+static POLY_F3 poly;
 
 int main(void)
 {
@@ -28,15 +28,15 @@ int main(void)
 
     SetDispMask(1);
 
-    setPolyF4(&poly);
-    setRGB0(&poly, 120, 120, 120);
+    setPolyF3(&poly);
 
-    setXY4(
+    setRGB0(&poly, 180, 180, 180);
+
+    setXY3(
         &poly,
-        80, 60,
-        240, 60,
-        240, 180,
-        80, 180
+        80, 180,
+        160, 60,
+        240, 180
     );
 
     while (1)
