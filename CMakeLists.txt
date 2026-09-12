@@ -7,3 +7,9 @@ psn00bsdk_add_executable(
     STATIC
     src/main.c
 )
+
+psn00bsdk_add_cd_image(
+    south_silence
+    south_silence
+    ${PROJECT_SOURCE_DIR}/cd.xml
+)
