@@ -9,8 +9,17 @@
 #define SCREEN_YRES 240
 
 #define OT_LEN 256
-#define PACKET_LEN 8192
+#define PACKET_LEN 2048
 
+#define CENTERX (SCREEN_XRES >> 1)
+#define CENTERY (SCREEN_YRES >> 1)
+
+
+/*
+ * ============================================================
+ * DOUBLE BUFFER
+ * ============================================================
+ */
 
 typedef struct
 {
@@ -33,21 +42,59 @@ char *db_nextpri;
 
 /*
  * ============================================================
- * CÂMERA
+ * CUBO
+ *
+ * Mesma convenção básica do exemplo oficial do GTE.
+ * ============================================================
+ */
+
+SVECTOR cube_verts[] =
+{
+    { -100, -100, -100, 0 },
+    {  100, -100, -100, 0 },
+    { -100,  100, -100, 0 },
+    {  100,  100, -100, 0 },
+
+    {  100, -100,  100, 0 },
+    { -100, -100,  100, 0 },
+    {  100,  100,  100, 0 },
+    { -100,  100,  100, 0 }
+};
+
+
+/*
+ * ============================================================
+ * FACES
  * ============================================================
  */
 
 typedef struct
 {
-    SVECTOR rotation;
-    VECTOR position;
+    short v0;
+    short v1;
+    short v2;
+    short v3;
 
-} Camera;
+} Face;
+
+
+Face cube_faces[] =
+{
+    { 0, 1, 2, 3 },
+    { 4, 5, 6, 7 },
+    { 5, 4, 0, 1 },
+    { 6, 7, 3, 2 },
+    { 0, 2, 5, 7 },
+    { 3, 1, 6, 4 }
+};
+
+
+#define CUBE_FACES 6
 
 
 /*
  * ============================================================
- * GRÁFICOS
+ * INICIALIZAÇÃO
  * ============================================================
  */
 
@@ -142,18 +189,18 @@ void init_graphics(void)
 
 
     gte_SetGeomOffset(
-        SCREEN_XRES >> 1,
-        SCREEN_YRES >> 1
+        CENTERX,
+        CENTERY
     );
 
 
     gte_SetGeomScreen(
-        SCREEN_XRES >> 1
+        CENTERX
     );
 
 
     /*
-     * TELA
+     * DISPLAY
      */
 
     PutDrawEnv(
@@ -170,7 +217,7 @@ void init_graphics(void)
 
 /*
  * ============================================================
- * TROCA DE FRAMEBUFFER
+ * DISPLAY
  * ============================================================
  */
 
@@ -211,534 +258,319 @@ void display(void)
 
 /*
  * ============================================================
- * CÂMERA
- * ============================================================
- */
-
-void set_camera(Camera *camera)
-{
-    MATRIX matrix;
-
-
-    RotMatrix(
-        &camera->rotation,
-        &matrix
-    );
-
-
-    TransMatrix(
-        &matrix,
-        &camera->position
-    );
-
-
-    gte_SetRotMatrix(
-        &matrix
-    );
-
-
-    gte_SetTransMatrix(
-        &matrix
-    );
-}
-
-
-/*
- * ============================================================
- * TRIÂNGULO 3D
- * ============================================================
- */
-
-void draw_triangle(
-    SVECTOR *a,
-    SVECTOR *b,
-    SVECTOR *c,
-    int r,
-    int g,
-    int bcolor
-)
-{
-    POLY_F3 *poly;
-
-    long depth;
-
-
-    /*
-     * Reserva espaço para o polígono.
-     */
-
-    poly =
-        (POLY_F3 *)db_nextpri;
-
-
-    /*
-     * Configura o triângulo.
-     */
-
-    setPolyF3(poly);
-
-
-    setRGB0(
-        poly,
-        r,
-        g,
-        bcolor
-    );
-
-
-    /*
-     * Envia os vértices para o GTE.
-     */
-
-    gte_ldv3(
-        a,
-        b,
-        c
-    );
-
-
-    /*
-     * Transformação 3D + perspectiva.
-     */
-
-    gte_rtpt();
-
-
-    /*
-     * Coordenadas na tela.
-     */
-
-    gte_stsxy0(
-        &poly->x0
-    );
-
-    gte_stsxy1(
-        &poly->x1
-    );
-
-    gte_stsxy2(
-        &poly->x2
-    );
-
-
-    /*
-     * Profundidade média.
-     */
-
-    gte_avsz3();
-
-    gte_stotz(
-        &depth
-    );
-
-
-    /*
-     * Converte para a Ordering Table.
-     */
-
-    depth >>= 8;
-
-
-    if (depth < 0)
-        depth = 0;
-
-
-    if (depth >= OT_LEN)
-        depth = OT_LEN - 1;
-
-
-    /*
-     * Adiciona à Ordering Table.
-     */
-
-    addPrim(
-        db[db_active].ot + depth,
-        poly
-    );
-
-
-    /*
-     * Próximo polígono.
-     */
-
-    db_nextpri =
-        (char *)(poly + 1);
-}
-
-
-/*
- * ============================================================
- * QUADRILÁTERO
- *
- * Formado por dois triângulos.
- * ============================================================
- */
-
-void draw_quad(
-    SVECTOR *a,
-    SVECTOR *b,
-    SVECTOR *c,
-    SVECTOR *d,
-    int r1,
-    int g1,
-    int b1,
-    int r2,
-    int g2,
-    int b2
-)
-{
-    draw_triangle(
-        a,
-        b,
-        c,
-        r1,
-        g1,
-        b1
-    );
-
-
-    draw_triangle(
-        a,
-        c,
-        d,
-        r2,
-        g2,
-        b2
-    );
-}
-
-
-/*
- * ============================================================
- * SOUTH SILENCE
+ * MAIN
  * ============================================================
  */
 
 int main(void)
 {
     /*
-     * ========================================================
-     * CÂMERA
-     * ========================================================
-     */
-
-    Camera camera =
-    {
-        {
-            0,
-            256,
-            0,
-            0
-        },
-
-        {
-            0,
-            0,
-            600
-        }
-    };
-
-
-    /*
-     * ========================================================
-     * CHÃO
+     * Rotação inicial.
      *
-     * TESTE DE POSIÇÃO VERTICAL
+     * O cubo começa sem rotação.
+     */
+
+    SVECTOR rotation =
+    {
+        0,
+        0,
+        0,
+        0
+    };
+
+
+    /*
+     * Posição do cubo.
      *
-     * Antes: Y = 120
-     * Agora: Y = 60
-     * ========================================================
+     * O exemplo oficial usa Z = 400.
      */
 
-    SVECTOR floor_a =
+    VECTOR position =
     {
-        -250,
-         60,
-         300,
-        0
-    };
-
-
-    SVECTOR floor_b =
-    {
-         250,
-         60,
-         300,
-        0
-    };
-
-
-    SVECTOR floor_c =
-    {
-         250,
-         60,
-        -250,
-        0
-    };
-
-
-    SVECTOR floor_d =
-    {
-        -250,
-         60,
-        -250,
-        0
+        0,
+        0,
+        400
     };
 
 
     /*
-     * ========================================================
-     * PAREDE DE FUNDO
-     * ========================================================
+     * Matriz de transformação.
      */
 
-    SVECTOR back_a =
-    {
-        -250,
-        -120,
-         300,
-        0
-    };
-
-
-    SVECTOR back_b =
-    {
-         250,
-        -120,
-         300,
-        0
-    };
-
-
-    SVECTOR back_c =
-    {
-         250,
-         180,
-         300,
-        0
-    };
-
-
-    SVECTOR back_d =
-    {
-        -250,
-         180,
-         300,
-        0
-    };
+    MATRIX matrix;
 
 
     /*
-     * ========================================================
-     * PAREDE ESQUERDA
-     * ========================================================
+     * Inicialização.
      */
-
-    SVECTOR left_a =
-    {
-        -250,
-        -120,
-        -250,
-        0
-    };
-
-
-    SVECTOR left_b =
-    {
-        -250,
-        -120,
-         300,
-        0
-    };
-
-
-    SVECTOR left_c =
-    {
-        -250,
-         180,
-         300,
-        0
-    };
-
-
-    SVECTOR left_d =
-    {
-        -250,
-         180,
-        -250,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * PAREDE DIREITA
-     * ========================================================
- */
-
-    SVECTOR right_a =
-    {
-         250,
-        -120,
-         300,
-        0
-    };
-
-
-    SVECTOR right_b =
-    {
-         250,
-        -120,
-        -250,
-        0
-    };
-
-
-    SVECTOR right_c =
-    {
-         250,
-         180,
-        -250,
-        0
-    };
-
-
-    SVECTOR right_d =
-    {
-         250,
-         180,
-         300,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * INICIALIZAÇÃO
-     * ========================================================
- */
 
     init_graphics();
 
 
     /*
      * ========================================================
-     * LOOP PRINCIPAL
+     * LOOP
      * ========================================================
- */
+     */
 
     while (1)
     {
+        POLY_F4 *poly;
+
+        long depth;
+
+
         /*
-         * CÂMERA
+         * ----------------------------------------------------
+         * MATRIZ
+         * ----------------------------------------------------
          */
 
-        set_camera(
-            &camera
+        RotMatrix(
+            &rotation,
+            &matrix
+        );
+
+
+        TransMatrix(
+            &matrix,
+            &position
         );
 
 
         /*
-         * ====================================================
-         * CHÃO
-         *
-         * AZUL
-         * ====================================================
- */
+         * ----------------------------------------------------
+         * GTE
+         * ----------------------------------------------------
+         */
 
-        draw_quad(
-            &floor_a,
-            &floor_b,
-            &floor_c,
-            &floor_d,
+        gte_SetRotMatrix(
+            &matrix
+        );
 
-            40,
-            80,
-            220,
 
-            20,
-            40,
-            140
+        gte_SetTransMatrix(
+            &matrix
         );
 
 
         /*
-         * ====================================================
-         * PAREDE DE FUNDO
-         *
-         * VERMELHA
-         * ====================================================
- */
+         * ----------------------------------------------------
+         * RESERVA PRIMITIVA
+         * ----------------------------------------------------
+         */
 
-        draw_quad(
-            &back_a,
-            &back_b,
-            &back_c,
-            &back_d,
-
-            220,
-            40,
-            40,
-
-            140,
-            20,
-            20
-        );
+        poly =
+            (POLY_F4 *)db_nextpri;
 
 
         /*
-         * ====================================================
-         * PAREDE ESQUERDA
-         *
-         * VERDE
-         * ====================================================
- */
+         * ----------------------------------------------------
+         * CADA FACE DO CUBO
+         * ----------------------------------------------------
+         */
 
-        draw_quad(
-            &left_a,
-            &left_b,
-            &left_c,
-            &left_d,
+        for (int i = 0; i < CUBE_FACES; i++)
+        {
+            Face *face;
 
-            40,
-            200,
-            70,
+            face =
+                &cube_faces[i];
 
-            20,
-            110,
-            35
-        );
+
+            /*
+             * Carrega três vértices.
+             */
+
+            gte_ldv3(
+                &cube_verts[face->v0],
+                &cube_verts[face->v1],
+                &cube_verts[face->v2]
+            );
+
+
+            /*
+             * Rotação + translação + perspectiva.
+             */
+
+            gte_rtpt();
+
+
+            /*
+             * Backface culling.
+             */
+
+            gte_nclip();
+
+
+            gte_stopz(
+                &depth
+            );
+
+
+            /*
+             * Se estiver virada para trás,
+             * não desenha.
+             */
+
+            if (depth < 0)
+                continue;
+
+
+            /*
+             * Profundidade média.
+             */
+
+            gte_avsz3();
+
+            gte_stotz(
+                &depth
+            );
+
+
+            depth >>= 2;
+
+
+            if (depth < 0)
+                continue;
+
+
+            if (depth >= OT_LEN)
+                continue;
+
+
+            /*
+             * Configura quadrilátero.
+             */
+
+            setPolyF4(
+                poly
+            );
+
+
+            /*
+             * Primeiro triângulo.
+             */
+
+            gte_stsxy0(
+                &poly->x0
+            );
+
+            gte_stsxy1(
+                &poly->x1
+            );
+
+            gte_stsxy2(
+                &poly->x2
+            );
+
+
+            /*
+             * Quarto vértice.
+             */
+
+            gte_ldv0(
+                &cube_verts[face->v3]
+            );
+
+
+            gte_rtps();
+
+
+            gte_stsxy(
+                &poly->x3
+            );
+
+
+            /*
+             * Cores diferentes por face.
+             */
+
+            if (i == 0)
+            {
+                setRGB0(
+                    poly,
+                    220,
+                    40,
+                    40
+                );
+            }
+            else if (i == 1)
+            {
+                setRGB0(
+                    poly,
+                    40,
+                    220,
+                    40
+                );
+            }
+            else if (i == 2)
+            {
+                setRGB0(
+                    poly,
+                    40,
+                    80,
+                    220
+                );
+            }
+            else if (i == 3)
+            {
+                setRGB0(
+                    poly,
+                    220,
+                    220,
+                    40
+                );
+            }
+            else if (i == 4)
+            {
+                setRGB0(
+                    poly,
+                    220,
+                    40,
+                    220
+                );
+            }
+            else
+            {
+                setRGB0(
+                    poly,
+                    40,
+                    220,
+                    220
+                );
+            }
+
+
+            /*
+             * Ordering Table.
+             */
+
+            addPrim(
+                db[db_active].ot + depth,
+                poly
+            );
+
+
+            /*
+             * Próxima primitiva.
+             */
+
+            poly++;
+        }
 
 
         /*
-         * ====================================================
-         * PAREDE DIREITA
-         *
-         * AMARELA
-         * ====================================================
- */
+         * Atualiza ponteiro.
+         */
 
-        draw_quad(
-            &right_a,
-            &right_b,
-            &right_c,
-            &right_d,
-
-            230,
-            200,
-            40,
-
-            150,
-            120,
-            20
-        );
+        db_nextpri =
+            (char *)poly;
 
 
         /*
-         * ====================================================
-         * MOSTRA O FRAME
-         * ====================================================
- */
+         * Mostra frame.
+         */
 
         display();
     }
