@@ -28,6 +28,7 @@ typedef struct
     VECTOR position;
 } Camera;
 
+
 void init_graphics(void)
 {
     ResetGraph(0);
@@ -52,9 +53,9 @@ void init_graphics(void)
 
     setRGB0(
         &db[0].draw,
-        8,
-        8,
-        12
+        5,
+        5,
+        8
     );
 
     SetDefDispEnv(
@@ -77,9 +78,9 @@ void init_graphics(void)
 
     setRGB0(
         &db[1].draw,
-        8,
-        8,
-        12
+        5,
+        5,
+        8
     );
 
     ClearOTagR(
@@ -118,6 +119,7 @@ void init_graphics(void)
     db_nextpri = db[0].packet;
 }
 
+
 void display(void)
 {
     DrawSync(0);
@@ -146,6 +148,7 @@ void display(void)
     );
 }
 
+
 void set_camera(Camera *camera)
 {
     MATRIX matrix;
@@ -168,6 +171,7 @@ void set_camera(Camera *camera)
         &matrix
     );
 }
+
 
 void draw_triangle(
     SVECTOR *a,
@@ -234,6 +238,7 @@ void draw_triangle(
     db_nextpri += sizeof(POLY_F3);
 }
 
+
 void draw_quad(
     SVECTOR *a,
     SVECTOR *b,
@@ -262,6 +267,7 @@ void draw_quad(
         bcol
     );
 }
+
 
 void draw_box(
     int x0,
@@ -346,605 +352,927 @@ void draw_box(
     );
 }
 
-void draw_room(void)
+
+/*
+ * Lajotas do chão
+ */
+
+void draw_floor_tiles(void)
 {
     const int LEFT = -300;
     const int RIGHT = 300;
-
     const int FRONT = 0;
     const int BACK = 500;
+    const int FLOOR = 120;
 
+    int x;
+    int z;
+
+    for (x = LEFT; x < RIGHT; x += 75)
+    {
+        for (z = FRONT; z < BACK; z += 75)
+        {
+            draw_box(
+                x + 2,
+                FLOOR - 2,
+                z + 2,
+                x + 73,
+                FLOOR,
+                z + 73,
+                145,
+                145,
+                138
+            );
+        }
+    }
+
+    /*
+     * Juntas longitudinais
+     */
+
+    for (x = LEFT; x <= RIGHT; x += 75)
+    {
+        draw_box(
+            x - 2,
+            FLOOR - 3,
+            FRONT,
+            x + 2,
+            FLOOR,
+            BACK,
+            42,
+            42,
+            40
+        );
+    }
+
+    /*
+     * Juntas transversais
+     */
+
+    for (z = FRONT; z <= BACK; z += 75)
+    {
+        draw_box(
+            LEFT,
+            FLOOR - 3,
+            z - 2,
+            RIGHT,
+            FLOOR,
+            z + 2,
+            42,
+            42,
+            40
+        );
+    }
+}
+
+
+/*
+ * Reboco da parede esquerda
+ */
+
+void draw_left_plaster(void)
+{
+    const int LEFT = -300;
     const int FLOOR = 120;
     const int CEILING = -120;
 
-    const int WINDOW_LEFT = -100;
-    const int WINDOW_RIGHT = 100;
+    int i;
 
-    const int WINDOW_TOP = -50;
-    const int WINDOW_BOTTOM = 50;
+    for (i = 0; i < 9; i++)
+    {
+        int y = -105 + i * 25;
 
-    const int DOOR_FRONT = 80;
-    const int DOOR_BACK = 230;
+        draw_box(
+            LEFT - 2,
+            y,
+            250,
+            LEFT + 2,
+            y + 12,
+            485,
+            66 + (i % 3) * 5,
+            60 + (i % 2) * 4,
+            55
+        );
+    }
 
-    const int DOOR_TOP = -75;
-    const int DOOR_BOTTOM = 120;
+    /*
+     * Manchas de reboco
+     */
 
-    SVECTOR floor_a = { LEFT, FLOOR, FRONT };
-    SVECTOR floor_b = { RIGHT, FLOOR, FRONT };
-    SVECTOR floor_c = { RIGHT, FLOOR, BACK };
-    SVECTOR floor_d = { LEFT, FLOOR, BACK };
+    draw_box(
+        LEFT - 3,
+        -20,
+        300,
+        LEFT + 2,
+        15,
+        340,
+        53,
+        49,
+        45
+    );
 
-    SVECTOR ceiling_a = { LEFT, CEILING, FRONT };
-    SVECTOR ceiling_b = { RIGHT, CEILING, FRONT };
-    SVECTOR ceiling_c = { RIGHT, CEILING, BACK };
-    SVECTOR ceiling_d = { LEFT, CEILING, BACK };
+    draw_box(
+        LEFT - 3,
+        40,
+        390,
+        LEFT + 2,
+        65,
+        430,
+        76,
+        69,
+        62
+    );
 
-    SVECTOR right_a = { RIGHT, CEILING, BACK };
-    SVECTOR right_b = { RIGHT, CEILING, FRONT };
-    SVECTOR right_c = { RIGHT, FLOOR, FRONT };
-    SVECTOR right_d = { RIGHT, FLOOR, BACK };
+    draw_box(
+        LEFT - 3,
+        -90,
+        410,
+        LEFT + 2,
+        -65,
+        455,
+        57,
+        53,
+        49
+    );
+}
 
-    SVECTOR left_front_a = { LEFT, CEILING, FRONT };
-    SVECTOR left_front_b = { LEFT, CEILING, DOOR_FRONT };
-    SVECTOR left_front_c = { LEFT, FLOOR, DOOR_FRONT };
-    SVECTOR left_front_d = { LEFT, FLOOR, FRONT };
 
-    SVECTOR left_top_a = { LEFT, CEILING, DOOR_FRONT };
-    SVECTOR left_top_b = { LEFT, CEILING, DOOR_BACK };
-    SVECTOR left_top_c = { LEFT, DOOR_TOP, DOOR_BACK };
-    SVECTOR left_top_d = { LEFT, DOOR_TOP, DOOR_FRONT };
+/*
+ * Reboco da parede direita
+ */
 
-    SVECTOR left_back_a = { LEFT, CEILING, DOOR_BACK };
-    SVECTOR left_back_b = { LEFT, CEILING, BACK };
-    SVECTOR left_back_c = { LEFT, FLOOR, BACK };
-    SVECTOR left_back_d = { LEFT, FLOOR, DOOR_BACK };
+void draw_right_plaster(void)
+{
+    const int RIGHT = 300;
 
-    SVECTOR back_top_a = { LEFT, CEILING, BACK };
-    SVECTOR back_top_b = { RIGHT, CEILING, BACK };
-    SVECTOR back_top_c = { RIGHT, WINDOW_TOP, BACK };
-    SVECTOR back_top_d = { LEFT, WINDOW_TOP, BACK };
+    draw_box(
+        RIGHT - 2,
+        -105,
+        45,
+        RIGHT + 2,
+        -85,
+        100,
+        61,
+        57,
+        53
+    );
 
-    SVECTOR back_bottom_a = { LEFT, WINDOW_BOTTOM, BACK };
-    SVECTOR back_bottom_b = { RIGHT, WINDOW_BOTTOM, BACK };
-    SVECTOR back_bottom_c = { RIGHT, FLOOR, BACK };
-    SVECTOR back_bottom_d = { LEFT, FLOOR, BACK };
+    draw_box(
+        RIGHT - 2,
+        -55,
+        160,
+        RIGHT + 2,
+        -30,
+        210,
+        75,
+        68,
+        61
+    );
 
-    SVECTOR back_left_a = { LEFT, WINDOW_TOP, BACK };
-    SVECTOR back_left_b = { WINDOW_LEFT, WINDOW_TOP, BACK };
-    SVECTOR back_left_c = { WINDOW_LEFT, WINDOW_BOTTOM, BACK };
-    SVECTOR back_left_d = { LEFT, WINDOW_BOTTOM, BACK };
+    draw_box(
+        RIGHT - 2,
+        20,
+        75,
+        RIGHT + 2,
+        42,
+        115,
+        54,
+        51,
+        47
+    );
 
-    SVECTOR back_right_a = { WINDOW_RIGHT, WINDOW_TOP, BACK };
-    SVECTOR back_right_b = { RIGHT, WINDOW_TOP, BACK };
-    SVECTOR back_right_c = { RIGHT, WINDOW_BOTTOM, BACK };
-    SVECTOR back_right_d = { WINDOW_RIGHT, WINDOW_BOTTOM, BACK };
-
-    SVECTOR window_a = {
-        WINDOW_LEFT,
-        WINDOW_TOP,
-        BACK - 5
-    };
-
-    SVECTOR window_b = {
-        WINDOW_RIGHT,
-        WINDOW_TOP,
-        BACK - 5
-    };
-
-    SVECTOR window_c = {
-        WINDOW_RIGHT,
-        WINDOW_BOTTOM,
-        BACK - 5
-    };
-
-    SVECTOR window_d = {
-        WINDOW_LEFT,
-        WINDOW_BOTTOM,
-        BACK - 5
-    };
-
-    SVECTOR door_a = {
-        LEFT + 4,
-        DOOR_TOP,
-        DOOR_FRONT
-    };
-
-    SVECTOR door_b = {
-        LEFT + 4,
-        DOOR_TOP,
-        DOOR_BACK
-    };
-
-    SVECTOR door_c = {
-        LEFT + 4,
-        DOOR_BOTTOM,
-        DOOR_BACK
-    };
-
-    SVECTOR door_d = {
-        LEFT + 4,
-        DOOR_BOTTOM,
-        DOOR_FRONT
-    };
-
-    draw_quad(
-        &floor_a,
-        &floor_b,
-        &floor_c,
-        &floor_d,
-        58,
+    draw_box(
+        RIGHT - 2,
         55,
-        50
-    );
-
-    draw_quad(
-        &ceiling_a,
-        &ceiling_b,
-        &ceiling_c,
-        &ceiling_d,
-        34,
-        34,
-        38
-    );
-
-    draw_quad(
-        &right_a,
-        &right_b,
-        &right_c,
-        &right_d,
-        72,
-        66,
-        60
-    );
-
-    draw_quad(
-        &left_front_a,
-        &left_front_b,
-        &left_front_c,
-        &left_front_d,
-        68,
-        62,
+        400,
+        RIGHT + 2,
+        80,
+        455,
+        69,
+        63,
         57
     );
+}
 
-    draw_quad(
-        &left_top_a,
-        &left_top_b,
-        &left_top_c,
-        &left_top_d,
-        68,
-        62,
-        57
-    );
 
-    draw_quad(
-        &left_back_a,
-        &left_back_b,
-        &left_back_c,
-        &left_back_d,
-        68,
-        62,
-        57
-    );
+/*
+ * Reboco da parede do fundo
+ */
 
-    draw_quad(
-        &back_top_a,
-        &back_top_b,
-        &back_top_c,
-        &back_top_d,
-        70,
+void draw_back_plaster(void)
+{
+    const int BACK = 500;
+
+    draw_box(
+        -285,
+        -105,
+        BACK - 2,
+        -215,
+        -80,
+        BACK + 2,
         65,
-        59
+        59,
+        53
     );
 
-    draw_quad(
-        &back_bottom_a,
-        &back_bottom_b,
-        &back_bottom_c,
-        &back_bottom_d,
-        70,
+    draw_box(
+        215,
+        -95,
+        BACK - 2,
+        285,
+        -70,
+        BACK + 2,
+        59,
+        54,
+        49
+    );
+
+    draw_box(
+        -80,
         65,
-        59
-    );
-
-    draw_quad(
-        &back_left_a,
-        &back_left_b,
-        &back_left_c,
-        &back_left_d,
+        BACK - 2,
+        -20,
+        90,
+        BACK + 2,
+        78,
         70,
-        65,
-        59
+        61
     );
 
-    draw_quad(
-        &back_right_a,
-        &back_right_b,
-        &back_right_c,
-        &back_right_d,
+    draw_box(
+        100,
         70,
-        65,
-        59
+        BACK - 2,
+        170,
+        95,
+        BACK + 2,
+        53,
+        49,
+        45
     );
+}
 
-    draw_quad(
-        &window_a,
-        &window_b,
-        &window_c,
-        &window_d,
-        25,
+
+/*
+ * Janela
+ */
+
+void draw_window(void)
+{
+    const int BACK = 500;
+
+    /*
+     * Vidro escuro
+     */
+
+    draw_box(
+        -100,
+        -50,
+        BACK - 8,
+        100,
+        50,
+        BACK - 2,
+        32,
         55,
-        82
+        72
     );
+
+    /*
+     * Moldura superior
+     */
 
     draw_box(
         -115,
         -62,
-        BACK - 12,
+        BACK - 14,
         115,
         -50,
-        BACK + 2,
-        92,
-        65,
-        38
+        BACK + 3,
+        105,
+        83,
+        55
     );
+
+    /*
+     * Moldura inferior
+     */
 
     draw_box(
         -115,
         50,
-        BACK - 12,
+        BACK - 14,
         115,
         62,
-        BACK + 2,
-        92,
-        65,
-        38
+        BACK + 3,
+        105,
+        83,
+        55
     );
 
+    /*
+     * Molduras laterais
+     */
+
     draw_box(
-        -112,
+        -115,
         -62,
-        BACK - 12,
+        BACK - 14,
         -100,
         62,
-        BACK + 2,
-        92,
-        65,
-        38
+        BACK + 3,
+        105,
+        83,
+        55
     );
 
     draw_box(
         100,
         -62,
-        BACK - 12,
-        112,
+        BACK - 14,
+        115,
         62,
-        BACK + 2,
-        92,
-        65,
-        38
+        BACK + 3,
+        105,
+        83,
+        55
     );
+
+    /*
+     * Divisória vertical
+     */
 
     draw_box(
         -6,
         -50,
-        BACK - 12,
+        BACK - 16,
         6,
         50,
-        BACK + 2,
-        92,
-        65,
-        38
+        BACK + 4,
+        105,
+        83,
+        55
     );
 
-    draw_quad(
-        &door_a,
-        &door_b,
-        &door_c,
-        &door_d,
-        78,
-        48,
+    /*
+     * Divisória horizontal
+     */
+
+    draw_box(
+        -100,
+        -6,
+        BACK - 16,
+        100,
+        6,
+        BACK + 4,
+        105,
+        83,
+        55
+    );
+
+    /*
+     * Pequeno puxador
+     */
+
+    draw_box(
+        15,
+        8,
+        BACK - 18,
+        25,
+        25,
+        BACK - 8,
+        125,
+        105,
+        70
+    );
+}
+
+
+/*
+ * Porta
+ */
+
+void draw_door(void)
+{
+    const int LEFT = -300;
+
+    /*
+     * Folha da porta
+     */
+
+    draw_box(
+        LEFT + 5,
+        -75,
+        80,
+        LEFT + 14,
+        120,
+        230,
+        74,
+        45,
         30
     );
 
-    draw_box(
-        LEFT + 2,
-        DOOR_TOP - 10,
-        DOOR_FRONT - 10,
-        LEFT + 14,
-        DOOR_BOTTOM + 10,
-        DOOR_FRONT,
-        100,
-        68,
-        38
-    );
+    /*
+     * Painel superior
+     */
 
     draw_box(
-        LEFT + 2,
-        DOOR_TOP - 10,
-        DOOR_BACK,
-        LEFT + 14,
-        DOOR_BOTTOM + 10,
-        DOOR_BACK + 10,
+        LEFT + 1,
+        -62,
         100,
-        68,
-        38
+        LEFT + 6,
+        -5,
+        210,
+        94,
+        57,
+        34
     );
 
+    /*
+     * Painel inferior
+     */
+
     draw_box(
-        LEFT + 2,
-        DOOR_TOP - 10,
-        DOOR_FRONT - 10,
-        LEFT + 14,
-        DOOR_TOP,
-        DOOR_BACK + 10,
+        LEFT + 1,
+        15,
+        100,
+        LEFT + 6,
+        100,
+        210,
+        92,
+        55,
+        32
+    );
+
+    /*
+     * Batente frontal
+     */
+
+    draw_box(
+        LEFT - 2,
+        -85,
+        68,
+        LEFT + 15,
+        125,
+        82,
+        105,
+        72,
+        40
+    );
+
+    /*
+     * Batente traseiro
+     */
+
+    draw_box(
+        LEFT - 2,
+        -85,
+        228,
+        LEFT + 15,
+        125,
+        242,
+        105,
+        72,
+        40
+    );
+
+    /*
+     * Batente superior
+     */
+
+    draw_box(
+        LEFT - 2,
+        -85,
+        68,
+        LEFT + 15,
+        -68,
+        242,
         108,
         74,
         40
     );
 
-    draw_box(
-        LEFT + 5,
-        8,
-        140,
-        LEFT + 13,
-        32,
-        165,
-        120,
-        88,
-        48
-    );
+    /*
+     * Maçaneta
+     */
 
     draw_box(
-        -180,
-        118,
-        170,
-        150,
-        124,
-        370,
-        48,
-        38,
-        34
-    );
-
-    draw_box(
-        -170,
-        117,
-        180,
-        140,
-        121,
-        360,
-        70,
-        55,
-        42
-    );
-
-    draw_box(
-        -250,
-        65,
-        365,
-        -70,
-        120,
-        410,
-        60,
-        43,
-        32
-    );
-
-    draw_box(
-        -235,
-        105,
-        360,
-        -85,
+        LEFT - 1,
+        5,
+        202,
+        LEFT + 9,
+        18,
+        216,
+        155,
         125,
-        405,
+        65
+    );
+}
+
+
+/*
+ * Ventilador de teto desligado
+ */
+
+void draw_ceiling_fan(void)
+{
+    /*
+     * Haste
+     */
+
+    draw_box(
+        -8,
+        -120,
+        245,
+        8,
+        -78,
+        255,
+        65,
+        65,
+        65
+    );
+
+    /*
+     * Corpo central
+     */
+
+    draw_box(
+        -18,
+        -85,
+        235,
+        18,
+        -68,
+        265,
+        55,
+        55,
+        55
+    );
+
+    /*
+     * Quatro pás
+     */
+
+    draw_box(
+        -125,
+        -78,
+        243,
+        -18,
+        -70,
+        253,
         72,
-        50,
-        36
+        72,
+        68
     );
 
     draw_box(
-        -220,
-        20,
-        375,
-        -100,
-        100,
-        400,
-        50,
-        34,
-        27
+        18,
+        -78,
+        235,
+        125,
+        -70,
+        245,
+        72,
+        72,
+        68
     );
+
+    draw_box(
+        -8,
+        -78,
+        130,
+        8,
+        -70,
+        220,
+        72,
+        72,
+        68
+    );
+
+    draw_box(
+        -8,
+        -78,
+        270,
+        8,
+        -70,
+        370,
+        72,
+        72,
+        68
+    );
+}
+
+
+/*
+ * Móvel e TV ligada
+ */
+
+void draw_tv_area(void)
+{
+    /*
+     * Rack
+     */
+
+    draw_box(
+        -245,
+        55,
+        345,
+        40,
+        120,
+        430,
+        54,
+        38,
+        30
+    );
+
+    /*
+     * Parte superior do rack
+     */
+
+    draw_box(
+        -255,
+        42,
+        335,
+        50,
+        58,
+        440,
+        74,
+        50,
+        35
+    );
+
+    /*
+     * TV
+     */
 
     draw_box(
         -205,
-        -55,
+        -45,
         350,
-        -115,
+        -15,
+        45,
+        365,
         25,
-        370,
-        18,
-        18,
-        20
+        24,
+        22
     );
 
     draw_box(
         -195,
-        -48,
-        343,
-        -125,
-        18,
-        360,
-        28,
-        30,
-        32
-    );
-
-    draw_box(
-        -170,
-        -15,
-        338,
-        -150,
-        -5,
+        -38,
         342,
-        80,
-        75,
-        65
-    );
-
-    draw_box(
-        -165,
-        -12,
-        337,
-        -155,
-        -7,
-        341,
-        35,
-        50,
+        -25,
+        38,
+        350,
+        70,
+        68,
         60
     );
 
-    draw_box(
-        40,
-        55,
-        330,
-        250,
-        120,
-        410,
-        70,
-        48,
-        38
-    );
+    /*
+     * Tela ligada
+     */
 
     draw_box(
+        -188,
+        -30,
+        337,
+        -32,
+        30,
+        341,
+        48,
+        82,
+        105
+    );
+
+    /*
+     * Brilho da tela
+     */
+
+    draw_box(
+        -180,
+        -22,
+        333,
+        -42,
+        20,
+        337,
+        63,
+        101,
+        125
+    );
+
+    /*
+     * Base da TV
+     */
+
+    draw_box(
+        -150,
         40,
-        0,
-        350,
-        250,
+        352,
+        -65,
+        55,
+        365,
+        45,
+        40,
+        35
+    );
+}
+
+
+/*
+ * Sofá
+ */
+
+void draw_sofa(void)
+{
+    /*
+     * Base
+     */
+
+    draw_box(
+        55,
         60,
+        300,
+        255,
+        120,
         405,
+        62,
+        45,
+        39
+    );
+
+    /*
+     * Assento
+     */
+
+    draw_box(
+        55,
+        18,
+        320,
+        255,
         75,
+        400,
+        77,
+        55,
+        45
+    );
+
+    /*
+     * Encosto
+     */
+
+    draw_box(
+        55,
+        -15,
+        365,
+        255,
+        65,
+        405,
+        72,
         52,
+        43
+    );
+
+    /*
+     * Braço esquerdo
+     */
+
+    draw_box(
+        45,
+        0,
+        305,
+        78,
+        105,
+        410,
+        68,
+        49,
         40
     );
 
-    draw_box(
-        50,
-        5,
-        340,
-        90,
-        125,
-        400,
-        82,
-        56,
-        42
-    );
+    /*
+     * Braço direito
+     */
 
     draw_box(
-        200,
-        5,
-        240,
-        250,
-        125,
-        400,
-        82,
-        56,
-        42
-    );
-
-    draw_box(
-        65,
-        115,
-        225,
         235,
-        155,
-        395,
-        78,
-        54,
-        42
+        0,
+        305,
+        270,
+        105,
+        410,
+        68,
+        49,
+        40
     );
 
+    /*
+     * Almofadas
+     */
+
     draw_box(
-        55,
-        115,
-        225,
-        235,
+        88,
+        -2,
+        320,
         145,
-        390,
-        65,
-        45,
-        36
+        28,
+        350,
+        83,
+        61,
+        50
     );
 
     draw_box(
-        55,
-        120,
-        345,
-        75,
-        165,
-        395,
-        90,
-        65,
-        48
+        155,
+        -2,
+        215,
+        212,
+        28,
+        350,
+        83,
+        61,
+        50
     );
+}
 
+
+/*
+ * Mesa central
+ */
+
+void draw_coffee_table(void)
+{
     draw_box(
         -80,
-        72,
-        270,
+        70,
+        235,
         70,
         88,
-        360,
+        325,
         70,
-        45,
+        47,
         30
     );
 
     draw_box(
         -70,
         88,
-        280,
+        245,
         60,
         100,
-        350,
+        315,
         90,
-        58,
+        60,
         38
     );
 
-    draw_box(
-        -65,
-        100,
-        285,
-        -50,
-        120,
-        300,
-        55,
-        38,
-        27
-    );
+    /*
+     * Copo abandonado
+     */
 
     draw_box(
+        -35,
+        75,
+        270,
+        -20,
+        85,
+        282,
+        115,
+        115,
+        105
+    );
+
+    /*
+     * Revista
+     */
+
+    draw_box(
+        5,
+        82,
+        250,
         45,
-        100,
-        285,
-        60,
-        120,
-        300,
-        55,
-        38,
-        27
+        86,
+        290,
+        75,
+        65,
+        48
     );
+}
 
+
+/*
+ * Mesa lateral e luminária
+ */
+
+void draw_side_table(void)
+{
     draw_box(
         220,
         65,
-        150,
+        145,
         275,
         115,
         190,
-        65,
-        45,
-        32
+        62,
+        42,
+        30
     );
 
     draw_box(
@@ -954,82 +1282,446 @@ void draw_room(void)
         267,
         120,
         185,
-        80,
-        55,
-        38
+        78,
+        52,
+        34
     );
 
+    /*
+     * Abajur
+     */
+
     draw_box(
-        230,
-        0,
+        235,
+        5,
         155,
-        240,
-        70,
-        170,
-        55,
+        260,
+        75,
+        175,
+        48,
         38,
         28
     );
 
     draw_box(
-        242,
-        115,
-        165,
-        255,
-        155,
-        172,
-        120,
-        90,
-        45
-    );
-
-    draw_box(
-        246,
-        25,
-        166,
-        251,
-        120,
-        170,
-        80,
-        65,
-        42
-    );
-
-    draw_box(
-        232,
-        0,
-        158,
-        265,
-        20,
-        178,
-        70,
-        50,
-        30
-    );
-
-    draw_box(
-        -270,
-        80,
-        90,
-        -225,
-        120,
-        135,
-        65,
-        42,
+        225,
+        -5,
+        150,
+        270,
+        10,
+        180,
+        72,
+        52,
         28
     );
 
     draw_box(
-        -265,
+        228,
+        -5,
+        152,
+        268,
+        8,
+        178,
+        125,
+        88,
+        42
+    );
+}
+
+
+/*
+ * Estante
+ */
+
+void draw_bookshelf(void)
+{
+    /*
+     * Estrutura
+     */
+
+    draw_box(
+        110,
+        5,
+        390,
+        270,
+        120,
+        470,
+        72,
+        48,
+        31
+    );
+
+    /*
+     * Prateleiras
+     */
+
+    draw_box(
+        105,
+        8,
+        385,
+        275,
+        18,
+        475,
+        95,
+        62,
+        38
+    );
+
+    draw_box(
+        105,
+        45,
+        385,
+        275,
+        55,
+        475,
+        95,
+        62,
+        38
+    );
+
+    draw_box(
+        105,
+        82,
+        385,
+        275,
+        92,
+        475,
+        95,
+        62,
+        38
+    );
+
+    /*
+     * Livros - prateleira inferior
+     */
+
+    draw_box(
+        125,
+        -5,
+        405,
+        140,
+        10,
+        430,
+        95,
+        45,
+        35
+    );
+
+    draw_box(
+        143,
+        -8,
+        405,
+        155,
+        10,
+        430,
+        45,
+        65,
+        80
+    );
+
+    draw_box(
+        158,
+        -4,
+        405,
+        175,
+        12,
+        430,
+        110,
+        70,
+        42
+    );
+
+    draw_box(
+        182,
+        -8,
+        405,
+        200,
+        10,
+        430,
+        58,
+        48,
+        90
+    );
+
+    /*
+     * Livros - prateleira do meio
+     */
+
+    draw_box(
+        118,
+        28,
+        408,
+        132,
+        48,
+        433,
+        75,
+        45,
+        30
+    );
+
+    draw_box(
+        138,
+        25,
+        408,
+        151,
+        50,
+        433,
+        50,
+        70,
+        65
+    );
+
+    draw_box(
+        160,
         30,
+        408,
+        176,
+        51,
+        433,
+        105,
+        55,
+        35
+    );
+
+    draw_box(
+        190,
+        24,
+        408,
+        202,
+        50,
+        433,
+        55,
+        55,
+        75
+    );
+
+    draw_box(
+        215,
+        30,
+        408,
+        230,
+        50,
+        433,
+        100,
+        70,
+        42
+    );
+
+    /*
+     * Livros - prateleira superior
+     */
+
+    draw_box(
+        120,
+        65,
+        410,
+        136,
+        88,
+        432,
+        50,
+        60,
+        85
+    );
+
+    draw_box(
+        142,
+        65,
+        410,
+        157,
+        90,
+        432,
+        95,
+        50,
+        35
+    );
+
+    draw_box(
+        165,
+        70,
+        410,
+        181,
+        90,
+        432,
+        60,
+        85,
+        55
+    );
+
+    draw_box(
+        190,
+        63,
+        410,
+        205,
+        89,
+        432,
+        110,
+        65,
+        38
+    );
+
+    draw_box(
+        215,
+        68,
+        410,
+        231,
+        90,
+        432,
+        52,
+        58,
+        90
+    );
+
+    /*
+     * Livro inclinado no topo
+     */
+
+    draw_box(
+        240,
+        90,
+        420,
+        260,
+        105,
+        440,
+        88,
+        55,
+        35
+    );
+}
+
+
+/*
+ * Cama
+ */
+
+void draw_bed(void)
+{
+    /*
+     * Estrutura
+     */
+
+    draw_box(
+        -265,
+        45,
+        80,
+        -85,
+        120,
+        275,
+        57,
+        43,
+        35
+    );
+
+    /*
+     * Colchão
+     */
+
+    draw_box(
+        -260,
+        0,
+        70,
+        -90,
+        55,
+        275,
+        91,
+        79,
+        65
+    );
+
+    /*
+     * Cobertor bagunçado
+     */
+
+    draw_box(
+        -245,
+        -2,
+        85,
+        -105,
+        25,
+        260,
+        70,
+        67,
+        62
+    );
+
+    draw_box(
+        -180,
+        20,
+        130,
+        -100,
+        40,
+        255,
+        84,
+        71,
+        56
+    );
+
+    /*
+     * Travesseiros
+     */
+
+    draw_box(
+        -245,
+        -5,
+        85,
+        -190,
+        18,
+        145,
+        110,
+        103,
+        88
+    );
+
+    draw_box(
+        -180,
+        -2,
+        85,
+        -125,
+        20,
+        145,
+        103,
+        97,
+        82
+    );
+}
+
+
+/*
+ * Planta
+ */
+
+void draw_plant(void)
+{
+    draw_box(
+        -280,
+        70,
+        90,
+        -225,
+        120,
+        135,
+        70,
+        43,
+        28
+    );
+
+    /*
+     * Tronco
+     */
+
+    draw_box(
+        -265,
+        25,
         100,
         -230,
         90,
         125,
-        42,
-        65,
-        38
+        43,
+        55,
+        35
     );
+
+    /*
+     * Folhas
+     */
 
     draw_box(
         -280,
@@ -1039,134 +1731,21 @@ void draw_room(void)
         55,
         110,
         35,
-        60,
-        32
+        65,
+        35
     );
 
     draw_box(
         -265,
-        20,
+        15,
         105,
         -220,
         65,
         130,
         38,
-        70,
-        35
-    );
-
-    draw_box(
-        -250,
-        0,
-        90,
-        -210,
-        45,
-        105,
-        40,
         75,
         40
     );
 
     draw_box(
-        -40,
-        -55,
-        493,
-        70,
-        5,
-        500,
-        80,
-        55,
-        35
-    );
-
-    draw_box(
-        -30,
-        -45,
-        488,
-        60,
-        -5,
-        495,
-        40,
-        55,
-        70
-    );
-
-    draw_box(
-        -20,
-        -35,
-        485,
-        50,
-        -15,
-        490,
-        70,
-        50,
-        35
-    );
-
-    draw_box(
-        -125,
-        -55,
-        480,
-        -100,
-        70,
-        492,
-        75,
-        48,
-        38
-    );
-
-    draw_box(
-        100,
-        -55,
-        125,
-        145,
-        70,
-        492,
-        75,
-        48,
-        38
-    );
-
-    draw_box(
-        -135,
-        -65,
-        475,
-        155,
-        -53,
-        490,
-        85,
-        58,
-        42
-    );
-}
-
-int main(void)
-{
-    Camera camera =
-    {
-        {
-            256,
-            0,
-            0,
-            0
-        },
-        {
-            0,
-            0,
-            650
-        }
-    };
-
-    init_graphics();
-
-    while (1)
-    {
-        set_camera(&camera);
-
-        draw_room();
-
-        display();
-    }
-
-    return 0;
-}
+ 
