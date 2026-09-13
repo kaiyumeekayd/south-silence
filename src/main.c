@@ -17,7 +17,7 @@ typedef struct
 
 typedef struct
 {
-    POLY_F3 polygons[2];
+    POLY_F3 polygons[6];
     uint32_t ot[OT_LENGTH];
 } RenderContext;
 
@@ -88,44 +88,108 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * PAREDE 3D
+     * CUBO
      *
-     * Todos os quatro pontos possuem
-     * profundidades diferentes.
+     *              4 -------- 5
+     *             /|         /|
+     *            / |        / |
+     *           7 -------- 6  |
+     *           |  |       |  |
+     *           |  0 ------|--1
+     *           | /        | /
+     *           |/         |/
+     *           3 -------- 2
      *
-     * A intenção é produzir um
-     * quadrilátero claramente assimétrico.
+     * 0-1-2-3 = frente
+     * 4-5-6-7 = trás
      */
 
-    Vertex3D v0 = { -80,  80, 300 };
-    Vertex3D v1 = {  80,  80, 400 };
-    Vertex3D v2 = {  80, -80, 400 };
-    Vertex3D v3 = { -80, -80, 300 };
+    Vertex3D v[8] =
+    {
+        /* Frente */
+        { -70,  70, 300 },  /* 0 */
+        {  70,  70, 300 },  /* 1 */
+        {  70, -70, 300 },  /* 2 */
+        { -70, -70, 300 },  /* 3 */
+
+        /* Trás */
+        { -70,  70, 500 },  /* 4 */
+        {  70,  70, 500 },  /* 5 */
+        {  70, -70, 500 },  /* 6 */
+        { -70, -70, 500 }   /* 7 */
+    };
 
     while (1)
     {
         ClearOTagR(ctx.ot, OT_LENGTH);
 
         /*
-         * Triângulo esquerdo
+         * TOPO
+         *
+         * Dois triângulos.
          */
         make_triangle(
             &ctx.polygons[0],
-            v0, v1, v3,
-            180, 180, 180
+            v[0], v[5], v[4],
+            110, 110, 110
+        );
+
+        make_triangle(
+            &ctx.polygons[1],
+            v[0], v[1], v[5],
+            110, 110, 110
         );
 
         /*
-         * Triângulo direito
+         * LADO DIREITO
+         *
+         * Dois triângulos.
          */
         make_triangle(
-            &ctx.polygons[1],
-            v1, v2, v3,
-            100, 100, 100
+            &ctx.polygons[2],
+            v[1], v[6], v[5],
+            70, 70, 70
         );
 
-        addPrim(&ctx.ot[12], &ctx.polygons[0]);
-        addPrim(&ctx.ot[12], &ctx.polygons[1]);
+        make_triangle(
+            &ctx.polygons[3],
+            v[1], v[2], v[6],
+            70, 70, 70
+        );
+
+        /*
+         * FRENTE
+         *
+         * Dois triângulos.
+         */
+        make_triangle(
+            &ctx.polygons[4],
+            v[0], v[1], v[2],
+            170, 170, 170
+        );
+
+        make_triangle(
+            &ctx.polygons[5],
+            v[0], v[2], v[3],
+            170, 170, 170
+        );
+
+        /*
+         * Faces mais distantes primeiro.
+         */
+
+        addPrim(&ctx.ot[14], &ctx.polygons[0]);
+        addPrim(&ctx.ot[14], &ctx.polygons[1]);
+
+        addPrim(&ctx.ot[13], &ctx.polygons[2]);
+        addPrim(&ctx.ot[13], &ctx.polygons[3]);
+
+        /*
+         * Frente por último.
+         */
+
+        addPrim(&ctx.ot[12], &ctx.polygons[4]);
+        addPrim(&ctx.ot[12], &ctx.polygons[5]);
 
         DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
