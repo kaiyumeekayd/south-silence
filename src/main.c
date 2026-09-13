@@ -26,6 +26,19 @@ char *db_nextpri;
 
 /*
  * ============================================================
+ * CÂMERA
+ * ============================================================
+ */
+
+typedef struct
+{
+    SVECTOR rotation;
+    VECTOR position;
+} Camera;
+
+
+/*
+ * ============================================================
  * Inicialização gráfica
  * ============================================================
  */
@@ -102,12 +115,11 @@ void init_graphics(void)
         OT_LEN
     );
 
-
     db_nextpri = db[0].packet;
 
 
     /*
-     * Inicialização do GTE.
+     * GTE
      */
     InitGeom();
 
@@ -171,7 +183,46 @@ void display(void)
 
 /*
  * ============================================================
- * Desenha um triângulo 3D
+ * Configura a câmera
+ * ============================================================
+ */
+
+void set_camera(Camera *camera)
+{
+    MATRIX matrix;
+
+    /*
+     * Cria a matriz de rotação da câmera.
+     */
+    RotMatrix(
+        &camera->rotation,
+        &matrix
+    );
+
+    /*
+     * Aplica a posição.
+     */
+    TransMatrix(
+        &matrix,
+        &camera->position
+    );
+
+    /*
+     * Envia a matriz para o GTE.
+     */
+    gte_SetRotMatrix(
+        &matrix
+    );
+
+    gte_SetTransMatrix(
+        &matrix
+    );
+}
+
+
+/*
+ * ============================================================
+ * Triângulo 3D
  * ============================================================
  */
 
@@ -203,7 +254,7 @@ void draw_triangle(
 
 
     /*
-     * Carrega os três vértices no GTE.
+     * Carrega os vértices.
      */
     gte_ldv3(
         a,
@@ -219,7 +270,7 @@ void draw_triangle(
 
 
     /*
-     * Coordenadas projetadas na tela.
+     * Coordenadas na tela.
      */
     gte_stsxy0(
         &poly->x0
@@ -235,7 +286,7 @@ void draw_triangle(
 
 
     /*
-     * Calcula profundidade média.
+     * Profundidade.
      */
     gte_avsz3();
 
@@ -254,7 +305,7 @@ void draw_triangle(
 
 
     /*
-     * Coloca o triângulo na Ordering Table.
+     * Ordering Table.
      */
     addPrim(
         db[db_active].ot + depth,
@@ -269,18 +320,8 @@ void draw_triangle(
 
 /*
  * ============================================================
- * Desenha um retângulo 3D usando dois triângulos
+ * Parede retangular
  * ============================================================
- *
- * A -------- B
- * |          |
- * |          |
- * D -------- C
- *
- * Triângulos:
- *
- * A-B-C
- * A-C-D
  */
 
 void draw_wall(
@@ -321,39 +362,26 @@ void draw_wall(
 
 int main(void)
 {
-    MATRIX matrix;
-
-
     /*
      * ========================================================
-     * ROTAÇÃO DA CÂMERA/ENQUADRAMENTO
-     *
-     * 0      = visão original
-     * 256    = pequena rotação no eixo Y
-     *
-     * Estamos usando valores fixos primeiro.
-     * Depois transformaremos isso em um sistema de câmera
-     * propriamente dito.
+     * CÂMERA
      * ========================================================
      */
 
-    SVECTOR rotation =
+    Camera camera =
     {
-        0,
-        256,
-        0,
-        0
-    };
+        {
+            0,
+            256,
+            0,
+            0
+        },
 
-
-    /*
-     * Translação da cena em relação ao ponto de visão.
-     */
-    VECTOR position =
-    {
-        0,
-        0,
-        600
+        {
+            0,
+            0,
+            600
+        }
     };
 
 
@@ -524,39 +552,17 @@ int main(void)
 
     /*
      * ========================================================
-     * LOOP PRINCIPAL
+     * LOOP
      * ========================================================
      */
 
     while (1)
     {
         /*
-         * Cria a matriz de rotação.
+         * Configura a câmera.
          */
-        RotMatrix(
-            &rotation,
-            &matrix
-        );
-
-
-        /*
-         * Adiciona a posição da cena.
-         */
-        TransMatrix(
-            &matrix,
-            &position
-        );
-
-
-        /*
-         * Envia a matriz para o GTE.
-         */
-        gte_SetRotMatrix(
-            &matrix
-        );
-
-        gte_SetTransMatrix(
-            &matrix
+        set_camera(
+            &camera
         );
 
 
@@ -615,7 +621,7 @@ int main(void)
          * ====================================================
          * PAREDE DIREITA
          * ====================================================
-         */
+ */
 
         draw_wall(
             &right_a,
@@ -629,11 +635,8 @@ int main(void)
 
 
         /*
-         * ====================================================
-         * MOSTRA O FRAME
-         * ====================================================
+         * Mostra o frame.
          */
-
         display();
     }
 
