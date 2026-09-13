@@ -88,42 +88,39 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * QUADRILÁTERO 3D
+     * PAREDE 3D
      *
-     * Os dois pontos da esquerda
-     * estão mais próximos.
+     * Todos os quatro pontos possuem
+     * profundidades diferentes.
      *
-     * Os dois pontos da direita
-     * estão mais distantes.
-     *
-     * Isso deve produzir perspectiva
-     * visível na tela.
+     * A intenção é produzir um
+     * quadrilátero claramente assimétrico.
      */
 
-    Vertex3D v0 = { -100,  70, 250 };
-    Vertex3D v1 = {  100,  70, 450 };
-    Vertex3D v2 = {  100, -70, 450 };
-    Vertex3D v3 = { -100, -70, 250 };
+    Vertex3D v0 = { -80,  80, 300 };
+    Vertex3D v1 = {  80,  80, 400 };
+    Vertex3D v2 = {  80, -80, 400 };
+    Vertex3D v3 = { -80, -80, 300 };
 
     while (1)
     {
         ClearOTagR(ctx.ot, OT_LENGTH);
 
         /*
-         * Primeiro triângulo
+         * Triângulo esquerdo
          */
         make_triangle(
             &ctx.polygons[0],
-            v0, v1, v2,
+            v0, v1, v3,
             180, 180, 180
         );
 
         /*
-         * Segundo triângulo
+         * Triângulo direito
          */
         make_triangle(
             &ctx.polygons[1],
-            v0, v2, v3,
+            v1, v2, v3,
             100, 100, 100
         );
 
