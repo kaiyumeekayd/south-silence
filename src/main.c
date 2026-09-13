@@ -4,155 +4,186 @@
 #include <psxgte.h>
 #include <psxetc.h>
 
-#define SCREEN_WIDTH  320
-#define SCREEN_HEIGHT 240
+#define SCREEN_XRES 320
+#define SCREEN_YRES 240
 
-#define OT_LENGTH 16
+#define OT_LEN 64
+#define PACKET_LEN 256
 
 typedef struct
-{
-    POLY_F3 poly;
-    uint32_t ot[OT_LENGTH];
-} RenderContext;
-
-static RenderContext ctx;
-
-int main(void)
 {
     DISPENV disp;
     DRAWENV draw;
 
-    /* -------------------------
-       GPU
-       ------------------------- */
+    uint32_t ot[OT_LEN];
+
+    char packet[PACKET_LEN];
+
+} DB;
+
+DB db;
+
+int main(void)
+{
+    SVECTOR v0;
+    SVECTOR v1;
+    SVECTOR v2;
+
+    MATRIX mtx;
+
+    POLY_F3 *poly;
+
+    long depth;
+
+
+    /*
+     * =========================
+     * GPU
+     * =========================
+     */
 
     ResetGraph(0);
 
     SetDefDispEnv(
-        &disp,
+        &db.disp,
         0,
         0,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT
+        SCREEN_XRES,
+        SCREEN_YRES
     );
 
     SetDefDrawEnv(
-        &draw,
+        &db.draw,
         0,
         0,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT
+        SCREEN_XRES,
+        SCREEN_YRES
     );
 
     setRGB0(
-        &draw,
-        12,
-        12,
-        16
+        &db.draw,
+        10,
+        10,
+        15
     );
 
-    draw.isbg = 1;
+    db.draw.isbg = 1;
 
-    PutDispEnv(&disp);
-    PutDrawEnv(&draw);
+    PutDispEnv(&db.disp);
+    PutDrawEnv(&db.draw);
 
     SetDispMask(1);
 
 
-    /* -------------------------
-       GTE
-       ------------------------- */
+    /*
+     * =========================
+     * GTE
+     * =========================
+     */
 
     InitGeom();
 
-    SetGeomOffset(
-        SCREEN_WIDTH / 2,
-        SCREEN_HEIGHT / 2
+    /*
+     * Centro da tela.
+     */
+    gte_SetGeomOffset(
+        SCREEN_XRES / 2,
+        SCREEN_YRES / 2
     );
 
-    SetGeomScreen(256);
+    /*
+     * Distância focal.
+     */
+    gte_SetGeomScreen(
+        SCREEN_XRES / 2
+    );
 
 
-    /* -------------------------
-       3D transformation
-       ------------------------- */
+    /*
+     * Matriz de transformação.
+     *
+     * Rotação = 0
+     * Translação Z = 600
+     */
 
-    SVECTOR rotation = {0, 0, 0, 0};
-
-    VECTOR translation = {
+    SVECTOR rotation = {
         0,
         0,
         0,
         0
     };
 
-    MATRIX matrix;
+    VECTOR position = {
+        0,
+        0,
+        600
+    };
 
     RotMatrix(
         &rotation,
-        &matrix
+        &mtx
     );
 
     TransMatrix(
-        &matrix,
-        &translation
+        &mtx,
+        &position
     );
 
-    SetRotMatrix(&matrix);
-    SetTransMatrix(&matrix);
+    gte_SetRotMatrix(&mtx);
+    gte_SetTransMatrix(&mtx);
 
 
-    /* -------------------------
-       Triangle vertices
-       ------------------------- */
+    /*
+     * =========================
+     * TRIÂNGULO 3D
+     * =========================
+     *
+     * Os três pontos estão
+     * em coordenadas 3D.
+     */
 
-    SVECTOR v0 = {
-        -100,
-        -70,
-        500,
-        0
-    };
+    v0.vx = -120;
+    v0.vy = -80;
+    v0.vz = 0;
+    v0.pad = 0;
 
-    SVECTOR v1 = {
-         100,
-        -70,
-        500,
-        0
-    };
+    v1.vx = 120;
+    v1.vy = -80;
+    v1.vz = 0;
+    v1.pad = 0;
 
-    SVECTOR v2 = {
-           0,
-         100,
-        700,
-        0
-    };
+    v2.vx = 0;
+    v2.vy = 120;
+    v2.vz = 0;
+    v2.pad = 0;
 
+
+    /*
+     * =========================
+     * LOOP
+     * =========================
+     */
 
     while (1)
     {
-        long p;
-        long flag;
-
-        long otz0;
-        long otz1;
-        long otz2;
-
-        long x0;
-        long x1;
-        long x2;
-
-        /* Limpa Ordering Table */
+        /*
+         * Limpa Ordering Table.
+         */
         ClearOTagR(
-            ctx.ot,
-            OT_LENGTH
+            db.ot,
+            OT_LEN
         );
 
 
-        /* Inicializa triângulo */
-        setPolyF3(&ctx.poly);
+        /*
+         * Cria o pacote do triângulo.
+         */
+        poly = (POLY_F3 *)db.packet;
+
+        setPolyF3(poly);
 
         setRGB0(
-            &ctx.poly,
+            poly,
             180,
             180,
             180
@@ -160,80 +191,84 @@ int main(void)
 
 
         /*
-         * Transformação 3D + perspectiva.
-         *
-         * O GTE transforma cada vértice
-         * diretamente para coordenadas
-         * de tela.
+         * Carrega os três vértices
+         * no GTE.
          */
-
-        otz0 = RotTransPers(
+        gte_ldv3(
             &v0,
-            &x0,
-            &p,
-            &flag
-        );
-
-        otz1 = RotTransPers(
             &v1,
-            &x1,
-            &p,
-            &flag
-        );
-
-        otz2 = RotTransPers(
-            &v2,
-            &x2,
-            &p,
-            &flag
+            &v2
         );
 
 
         /*
-         * RotTransPers retorna as
-         * coordenadas X/Y empacotadas
-         * em um long.
+         * Rotação + translação +
+         * perspectiva.
          */
-
-        ctx.poly.x0 = x0 & 0xFFFF;
-        ctx.poly.y0 = (x0 >> 16) & 0xFFFF;
-
-        ctx.poly.x1 = x1 & 0xFFFF;
-        ctx.poly.y1 = (x1 >> 16) & 0xFFFF;
-
-        ctx.poly.x2 = x2 & 0xFFFF;
-        ctx.poly.y2 = (x2 >> 16) & 0xFFFF;
+        gte_rtpt();
 
 
         /*
-         * Usa a profundidade média
-         * para ordenar o triângulo.
+         * Recupera as coordenadas
+         * projetadas pelo GTE.
          */
+        gte_stsxy0(
+            &poly->x0
+        );
 
-        long otz =
-            (otz0 + otz1 + otz2) / 3;
+        gte_stsxy1(
+            &poly->x1
+        );
 
-        if (otz < 1)
-            otz = 1;
-
-        if (otz >= OT_LENGTH)
-            otz = OT_LENGTH - 1;
+        gte_stsxy2(
+            &poly->x2
+        );
 
 
+        /*
+         * Calcula profundidade média.
+         */
+        gte_avsz3();
+
+        gte_stotz(
+            &depth
+        );
+
+
+        /*
+         * Converte profundidade para
+         * o tamanho da Ordering Table.
+         */
+        depth >>= 3;
+
+
+        if (depth < 0)
+            depth = 0;
+
+        if (depth >= OT_LEN)
+            depth = OT_LEN - 1;
+
+
+        /*
+         * Coloca o triângulo na OT.
+         */
         addPrim(
-            &ctx.ot[otz],
-            &ctx.poly
+            &db.ot[depth],
+            poly
         );
 
 
         /*
          * Envia para a GPU.
          */
-
         DrawOTag(
-            &ctx.ot[OT_LENGTH - 1]
+            &db.ot[OT_LEN - 1]
         );
 
+
+        /*
+         * Espera o frame.
+         */
         VSync(0);
     }
 
