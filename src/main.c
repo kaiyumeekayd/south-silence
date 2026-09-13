@@ -1746,6 +1746,401 @@ void draw_plant(void)
         75,
         40
     );
+    draw_box(
+        -250,
+        0,
+        90,
+        -210,
+        45,
+        105,
+        45,
+        80,
+        42
+    );
+}
+
+
+void draw_floor_mess(void)
+{
+    draw_box(
+        -250,
+        88,
+        285,
+        -205,
+        118,
+        325,
+        105,
+        72,
+        40
+    );
 
     draw_box(
- 
+        -150,
+        90,
+        300,
+        -105,
+        120,
+        350,
+        70,
+        48,
+        30
+    );
+
+    draw_box(
+        -60,
+        108,
+        170,
+        15,
+        115,
+        205,
+        82,
+        50,
+        35
+    );
+
+    draw_box(
+        -45,
+        105,
+        185,
+        30,
+        112,
+        225,
+        45,
+        62,
+        80
+    );
+
+    draw_box(
+        20,
+        108,
+        390,
+        70,
+        115,
+        430,
+        95,
+        55,
+        35
+    );
+
+    draw_box(
+        95,
+        103,
+        225,
+        145,
+        118,
+        275,
+        58,
+        64,
+        73
+    );
+
+    draw_box(
+        130,
+        100,
+        225,
+        175,
+        117,
+        270,
+        72,
+        48,
+        75
+    );
+
+    draw_box(
+        80,
+        80,
+        210,
+        92,
+        112,
+        220,
+        45,
+        75,
+        80
+    );
+
+    draw_box(
+        10,
+        92,
+        290,
+        45,
+        98,
+        305,
+        40,
+        40,
+        42
+    );
+}
+
+
+void draw_picture(void)
+{
+    draw_box(
+        115,
+        -75,
+        492,
+        215,
+        -50,
+        498,
+        80,
+        58,
+        38
+    );
+
+    draw_box(
+        123,
+        -70,
+        488,
+        207,
+        -55,
+        493,
+        42,
+        48,
+        58
+    );
+
+    draw_box(
+        135,
+        -67,
+        485,
+        195,
+        -58,
+        490,
+        70,
+        45,
+        40
+    );
+}
+
+
+void draw_small_objects(void)
+{
+    draw_box(
+        -15,
+        70,
+        350,
+        5,
+        82,
+        360,
+        105,
+        105,
+        98
+    );
+
+    draw_box(
+        15,
+        55,
+        375,
+        60,
+        95,
+        415,
+        112,
+        76,
+        38
+    );
+
+    draw_box(
+        -115,
+        45,
+        360,
+        -75,
+        58,
+        390,
+        28,
+        27,
+        25
+    );
+
+    draw_box(
+        -60,
+        50,
+        400,
+        -35,
+        57,
+        425,
+        75,
+        52,
+        35
+    );
+}
+
+
+void draw_room(void)
+{
+    const int LEFT = -300;
+    const int RIGHT = 300;
+
+    const int FRONT = 0;
+    const int BACK = 500;
+
+    const int FLOOR = 120;
+    const int CEILING = -120;
+
+    draw_box(
+        LEFT,
+        FLOOR,
+        FRONT,
+        RIGHT,
+        FLOOR + 4,
+        BACK,
+        125,
+        125,
+        118
+    );
+
+    draw_box(
+        LEFT,
+        CEILING,
+        FRONT,
+        RIGHT,
+        CEILING + 5,
+        BACK,
+        30,
+        30,
+        34
+    );
+
+    draw_box(
+        RIGHT,
+        CEILING,
+        FRONT,
+        RIGHT + 4,
+        FLOOR,
+        BACK,
+        58,
+        54,
+        50
+    );
+
+    draw_box(
+        LEFT,
+        CEILING,
+        FRONT,
+        LEFT + 4,
+        FLOOR,
+        80,
+        62,
+        57,
+        52
+    );
+
+    draw_box(
+        LEFT,
+        CEILING,
+        230,
+        LEFT + 4,
+        FLOOR,
+        BACK,
+        62,
+        57,
+        52
+    );
+
+    draw_box(
+        LEFT,
+        CEILING,
+        80,
+        LEFT + 4,
+        -75,
+        230,
+        62,
+        57,
+        52
+    );
+
+    draw_box(
+        LEFT,
+        CEILING,
+        BACK,
+        -100,
+        -50,
+        BACK + 4,
+        65,
+        59,
+        54
+    );
+
+    draw_box(
+        100,
+        CEILING,
+        BACK,
+        RIGHT,
+        -50,
+        BACK + 4,
+        65,
+        59,
+        54
+    );
+
+    draw_box(
+        -100,
+        -50,
+        BACK,
+        100,
+        50,
+        BACK + 4,
+        65,
+        59,
+        54
+    );
+
+    draw_box(
+        LEFT,
+        50,
+        BACK,
+        RIGHT,
+        FLOOR,
+        BACK + 4,
+        65,
+        59,
+        54
+    );
+
+    draw_floor_tiles();
+    draw_left_plaster();
+    draw_right_plaster();
+    draw_back_plaster();
+    draw_window();
+    draw_door();
+    draw_ceiling_fan();
+    draw_bed();
+    draw_tv_area();
+    draw_sofa();
+    draw_coffee_table();
+    draw_side_table();
+    draw_bookshelf();
+    draw_plant();
+    draw_picture();
+    draw_floor_mess();
+    draw_small_objects();
+}
+
+
+int main(void)
+{
+    Camera camera =
+    {
+        {
+            256,
+            0,
+            0,
+            0
+        },
+        {
+            0,
+            0,
+            650
+        }
+    };
+
+    init_graphics();
+
+    while (1)
+    {
+        set_camera(&camera);
+        draw_room();
+        display();
+    }
+
+    return 0;
+}
+
