@@ -8,6 +8,7 @@
 
 #define OT_LEN 256
 #define PACKET_LEN 65536
+
 #define TEX_W 64
 #define TEX_H 64
 #define TEX_X 640
@@ -15,6 +16,7 @@
 
 static uint16_t wall_texture[TEX_W * TEX_H];
 static uint16_t wall_tpage;
+
 typedef struct
 {
     DISPENV disp;
@@ -34,6 +36,11 @@ typedef struct
     VECTOR position;
 } Camera;
 
+
+/*
+ * Converte RGB888 para RGB555 do PlayStation.
+ */
+
 static uint16_t make_rgb15(int r, int g, int b)
 {
     return (uint16_t)(
@@ -42,6 +49,11 @@ static uint16_t make_rgb15(int r, int g, int b)
         (((b >> 3) & 31) << 10)
     );
 }
+
+
+/*
+ * Pequeno gerador determinístico de ruído.
+ */
 
 static uint32_t texture_noise(uint32_t x, uint32_t y)
 {
@@ -54,6 +66,11 @@ static uint32_t texture_noise(uint32_t x, uint32_t y)
 
     return n;
 }
+
+
+/*
+ * Cria uma textura procedural de reboco.
+ */
 
 static void init_textures(void)
 {
@@ -88,13 +105,23 @@ static void init_textures(void)
                 b -= 18;
             }
 
-            if (r < 0) r = 0;
-            if (g < 0) g = 0;
-            if (b < 0) b = 0;
+            if (r < 0)
+                r = 0;
 
-            if (r > 255) r = 255;
-            if (g > 255) g = 255;
-            if (b > 255) b = 255;
+            if (g < 0)
+                g = 0;
+
+            if (b < 0)
+                b = 0;
+
+            if (r > 255)
+                r = 255;
+
+            if (g > 255)
+                g = 255;
+
+            if (b > 255)
+                b = 255;
 
             wall_texture[y * TEX_W + x] =
                 make_rgb15(r, g, b);
@@ -124,6 +151,12 @@ static void init_textures(void)
         TEX_Y
     );
 }
+
+
+/*
+ * Inicializa o sistema gráfico.
+ */
+
 void init_graphics(void)
 {
     ResetGraph(0);
@@ -190,6 +223,12 @@ void init_graphics(void)
 
     InitGeom();
 
+    /*
+     * Carrega a textura na VRAM.
+     */
+
+    init_textures();
+
     gte_SetGeomOffset(
         SCREEN_XRES / 2,
         SCREEN_YRES / 2
@@ -214,6 +253,10 @@ void init_graphics(void)
     db_nextpri = db[0].packet;
 }
 
+
+/*
+ * Troca o buffer de renderização.
+ */
 
 void display(void)
 {
@@ -244,6 +287,10 @@ void display(void)
 }
 
 
+/*
+ * Configura a câmera.
+ */
+
 void set_camera(Camera *camera)
 {
     MATRIX matrix;
@@ -267,6 +314,10 @@ void set_camera(Camera *camera)
     );
 }
 
+
+/*
+ * Desenha triângulo sólido.
+ */
 
 void draw_triangle(
     SVECTOR *a,
@@ -334,6 +385,10 @@ void draw_triangle(
 }
 
 
+/*
+ * Desenha quadrilátero usando dois triângulos.
+ */
+
 void draw_quad(
     SVECTOR *a,
     SVECTOR *b,
@@ -363,6 +418,10 @@ void draw_quad(
     );
 }
 
+
+/*
+ * Desenha uma caixa 3D.
+ */
 
 void draw_box(
     int x0,
@@ -449,7 +508,7 @@ void draw_box(
 
 
 /*
- * Lajotas do chão
+ * Lajotas do chão.
  */
 
 void draw_floor_tiles(void)
@@ -481,10 +540,6 @@ void draw_floor_tiles(void)
         }
     }
 
-    /*
-     * Juntas longitudinais
-     */
-
     for (x = LEFT; x <= RIGHT; x += 75)
     {
         draw_box(
@@ -499,10 +554,6 @@ void draw_floor_tiles(void)
             40
         );
     }
-
-    /*
-     * Juntas transversais
-     */
 
     for (z = FRONT; z <= BACK; z += 75)
     {
@@ -522,14 +573,12 @@ void draw_floor_tiles(void)
 
 
 /*
- * Reboco da parede esquerda
+ * Reboco da parede esquerda.
  */
 
 void draw_left_plaster(void)
 {
     const int LEFT = -300;
-    const int FLOOR = 120;
-    const int CEILING = -120;
 
     int i;
 
@@ -549,10 +598,6 @@ void draw_left_plaster(void)
             55
         );
     }
-
-    /*
-     * Manchas de reboco
-     */
 
     draw_box(
         LEFT - 3,
@@ -593,7 +638,7 @@ void draw_left_plaster(void)
 
 
 /*
- * Reboco da parede direita
+ * Reboco da parede direita.
  */
 
 void draw_right_plaster(void)
@@ -651,7 +696,7 @@ void draw_right_plaster(void)
 
 
 /*
- * Reboco da parede do fundo
+ * Reboco da parede do fundo.
  */
 
 void draw_back_plaster(void)
@@ -709,16 +754,12 @@ void draw_back_plaster(void)
 
 
 /*
- * Janela
+ * Janela.
  */
 
 void draw_window(void)
 {
     const int BACK = 500;
-
-    /*
-     * Vidro escuro
-     */
 
     draw_box(
         -100,
@@ -732,10 +773,6 @@ void draw_window(void)
         72
     );
 
-    /*
-     * Moldura superior
-     */
-
     draw_box(
         -115,
         -62,
@@ -748,10 +785,6 @@ void draw_window(void)
         55
     );
 
-    /*
-     * Moldura inferior
-     */
-
     draw_box(
         -115,
         50,
@@ -763,10 +796,6 @@ void draw_window(void)
         83,
         55
     );
-
-    /*
-     * Molduras laterais
-     */
 
     draw_box(
         -115,
@@ -792,10 +821,6 @@ void draw_window(void)
         55
     );
 
-    /*
-     * Divisória vertical
-     */
-
     draw_box(
         -6,
         -50,
@@ -808,10 +833,6 @@ void draw_window(void)
         55
     );
 
-    /*
-     * Divisória horizontal
-     */
-
     draw_box(
         -100,
         -6,
@@ -823,10 +844,6 @@ void draw_window(void)
         83,
         55
     );
-
-    /*
-     * Pequeno puxador
-     */
 
     draw_box(
         15,
@@ -843,16 +860,12 @@ void draw_window(void)
 
 
 /*
- * Porta
+ * Porta.
  */
 
 void draw_door(void)
 {
     const int LEFT = -300;
-
-    /*
-     * Folha da porta
-     */
 
     draw_box(
         LEFT + 5,
@@ -866,10 +879,6 @@ void draw_door(void)
         30
     );
 
-    /*
-     * Painel superior
-     */
-
     draw_box(
         LEFT + 1,
         -62,
@@ -881,10 +890,6 @@ void draw_door(void)
         57,
         34
     );
-
-    /*
-     * Painel inferior
-     */
 
     draw_box(
         LEFT + 1,
@@ -898,10 +903,6 @@ void draw_door(void)
         32
     );
 
-    /*
-     * Batente frontal
-     */
-
     draw_box(
         LEFT - 2,
         -85,
@@ -913,10 +914,6 @@ void draw_door(void)
         72,
         40
     );
-
-    /*
-     * Batente traseiro
-     */
 
     draw_box(
         LEFT - 2,
@@ -930,10 +927,6 @@ void draw_door(void)
         40
     );
 
-    /*
-     * Batente superior
-     */
-
     draw_box(
         LEFT - 2,
         -85,
@@ -945,10 +938,6 @@ void draw_door(void)
         74,
         40
     );
-
-    /*
-     * Maçaneta
-     */
 
     draw_box(
         LEFT - 1,
@@ -965,15 +954,11 @@ void draw_door(void)
 
 
 /*
- * Ventilador de teto desligado
+ * Ventilador de teto desligado.
  */
 
 void draw_ceiling_fan(void)
 {
-    /*
-     * Haste
-     */
-
     draw_box(
         -8,
         -120,
@@ -986,10 +971,6 @@ void draw_ceiling_fan(void)
         65
     );
 
-    /*
-     * Corpo central
-     */
-
     draw_box(
         -18,
         -85,
@@ -1001,10 +982,6 @@ void draw_ceiling_fan(void)
         55,
         55
     );
-
-    /*
-     * Quatro pás
-     */
 
     draw_box(
         -125,
@@ -1057,15 +1034,11 @@ void draw_ceiling_fan(void)
 
 
 /*
- * Móvel e TV ligada
+ * Móvel e TV ligada.
  */
 
 void draw_tv_area(void)
 {
-    /*
-     * Rack
-     */
-
     draw_box(
         -245,
         55,
@@ -1078,10 +1051,6 @@ void draw_tv_area(void)
         30
     );
 
-    /*
-     * Parte superior do rack
-     */
-
     draw_box(
         -255,
         42,
@@ -1093,10 +1062,6 @@ void draw_tv_area(void)
         50,
         35
     );
-
-    /*
-     * TV
-     */
 
     draw_box(
         -205,
@@ -1122,10 +1087,6 @@ void draw_tv_area(void)
         60
     );
 
-    /*
-     * Tela ligada
-     */
-
     draw_box(
         -188,
         -30,
@@ -1138,10 +1099,6 @@ void draw_tv_area(void)
         105
     );
 
-    /*
-     * Brilho da tela
-     */
-
     draw_box(
         -180,
         -22,
@@ -1153,10 +1110,6 @@ void draw_tv_area(void)
         101,
         125
     );
-
-    /*
-     * Base da TV
-     */
 
     draw_box(
         -150,
@@ -1173,15 +1126,11 @@ void draw_tv_area(void)
 
 
 /*
- * Sofá
+ * Sofá.
  */
 
 void draw_sofa(void)
 {
-    /*
-     * Base
-     */
-
     draw_box(
         55,
         60,
@@ -1193,10 +1142,6 @@ void draw_sofa(void)
         45,
         39
     );
-
-    /*
-     * Assento
-     */
 
     draw_box(
         55,
@@ -1210,10 +1155,6 @@ void draw_sofa(void)
         45
     );
 
-    /*
-     * Encosto
-     */
-
     draw_box(
         55,
         -15,
@@ -1225,10 +1166,6 @@ void draw_sofa(void)
         52,
         43
     );
-
-    /*
-     * Braço esquerdo
-     */
 
     draw_box(
         45,
@@ -1242,10 +1179,6 @@ void draw_sofa(void)
         40
     );
 
-    /*
-     * Braço direito
-     */
-
     draw_box(
         235,
         0,
@@ -1257,10 +1190,6 @@ void draw_sofa(void)
         49,
         40
     );
-
-    /*
-     * Almofadas
-     */
 
     draw_box(
         88,
@@ -1289,7 +1218,7 @@ void draw_sofa(void)
 
 
 /*
- * Mesa central
+ * Mesa central.
  */
 
 void draw_coffee_table(void)
@@ -1318,10 +1247,6 @@ void draw_coffee_table(void)
         38
     );
 
-    /*
-     * Copo abandonado
-     */
-
     draw_box(
         -35,
         75,
@@ -1333,10 +1258,6 @@ void draw_coffee_table(void)
         115,
         105
     );
-
-    /*
-     * Revista
-     */
 
     draw_box(
         5,
@@ -1353,7 +1274,7 @@ void draw_coffee_table(void)
 
 
 /*
- * Mesa lateral e luminária
+ * Mesa lateral e luminária.
  */
 
 void draw_side_table(void)
@@ -1381,10 +1302,6 @@ void draw_side_table(void)
         52,
         34
     );
-
-    /*
-     * Abajur
-     */
 
     draw_box(
         235,
@@ -1425,15 +1342,11 @@ void draw_side_table(void)
 
 
 /*
- * Estante
+ * Estante.
  */
 
 void draw_bookshelf(void)
 {
-    /*
-     * Estrutura
-     */
-
     draw_box(
         110,
         5,
@@ -1445,10 +1358,6 @@ void draw_bookshelf(void)
         48,
         31
     );
-
-    /*
-     * Prateleiras
-     */
 
     draw_box(
         105,
@@ -1485,10 +1394,6 @@ void draw_bookshelf(void)
         62,
         38
     );
-
-    /*
-     * Livros - prateleira inferior
-     */
 
     draw_box(
         125,
@@ -1537,10 +1442,6 @@ void draw_bookshelf(void)
         48,
         90
     );
-
-    /*
-     * Livros - prateleira do meio
-     */
 
     draw_box(
         118,
@@ -1602,10 +1503,6 @@ void draw_bookshelf(void)
         42
     );
 
-    /*
-     * Livros - prateleira superior
-     */
-
     draw_box(
         120,
         65,
@@ -1666,10 +1563,6 @@ void draw_bookshelf(void)
         90
     );
 
-    /*
-     * Livro inclinado no topo
-     */
-
     draw_box(
         240,
         90,
@@ -1685,15 +1578,11 @@ void draw_bookshelf(void)
 
 
 /*
- * Cama
+ * Cama.
  */
 
 void draw_bed(void)
 {
-    /*
-     * Estrutura
-     */
-
     draw_box(
         -265,
         45,
@@ -1706,10 +1595,6 @@ void draw_bed(void)
         35
     );
 
-    /*
-     * Colchão
-     */
-
     draw_box(
         -260,
         0,
@@ -1721,10 +1606,6 @@ void draw_bed(void)
         79,
         65
     );
-
-    /*
-     * Cobertor bagunçado
-     */
 
     draw_box(
         -245,
@@ -1749,10 +1630,6 @@ void draw_bed(void)
         71,
         56
     );
-
-    /*
-     * Travesseiros
-     */
 
     draw_box(
         -245,
@@ -1781,7 +1658,7 @@ void draw_bed(void)
 
 
 /*
- * Planta
+ * Planta.
  */
 
 void draw_plant(void)
@@ -1798,10 +1675,6 @@ void draw_plant(void)
         28
     );
 
-    /*
-     * Tronco
-     */
-
     draw_box(
         -265,
         25,
@@ -1813,10 +1686,6 @@ void draw_plant(void)
         55,
         35
     );
-
-    /*
-     * Folhas
-     */
 
     draw_box(
         -280,
@@ -1841,6 +1710,7 @@ void draw_plant(void)
         75,
         40
     );
+
     draw_box(
         -250,
         0,
@@ -1854,6 +1724,10 @@ void draw_plant(void)
     );
 }
 
+
+/*
+ * Objetos espalhados pelo chão.
+ */
 
 void draw_floor_mess(void)
 {
@@ -1967,6 +1841,10 @@ void draw_floor_mess(void)
 }
 
 
+/*
+ * Quadro.
+ */
+
 void draw_picture(void)
 {
     draw_box(
@@ -2006,6 +1884,10 @@ void draw_picture(void)
     );
 }
 
+
+/*
+ * Pequenos objetos.
+ */
 
 void draw_small_objects(void)
 {
@@ -2059,6 +1941,10 @@ void draw_small_objects(void)
 }
 
 
+/*
+ * Sala.
+ */
+
 void draw_room(void)
 {
     const int LEFT = -300;
@@ -2069,6 +1955,10 @@ void draw_room(void)
 
     const int FLOOR = 120;
     const int CEILING = -120;
+
+    /*
+     * Piso.
+     */
 
     draw_box(
         LEFT,
@@ -2082,6 +1972,10 @@ void draw_room(void)
         118
     );
 
+    /*
+     * Teto.
+     */
+
     draw_box(
         LEFT,
         CEILING,
@@ -2093,6 +1987,10 @@ void draw_room(void)
         30,
         34
     );
+
+    /*
+     * Parede direita.
+     */
 
     draw_box(
         RIGHT,
@@ -2106,6 +2004,10 @@ void draw_room(void)
         50
     );
 
+    /*
+     * Parede esquerda, parte frontal.
+     */
+
     draw_box(
         LEFT,
         CEILING,
@@ -2118,6 +2020,10 @@ void draw_room(void)
         52
     );
 
+    /*
+     * Parede esquerda, parte traseira.
+     */
+
     draw_box(
         LEFT,
         CEILING,
@@ -2129,6 +2035,10 @@ void draw_room(void)
         57,
         52
     );
+
+    /*
+     * Espaço da porta.
+     */
 
     draw_box(
         LEFT,
@@ -2142,6 +2052,10 @@ void draw_room(void)
         52
     );
 
+    /*
+     * Parede do fundo, lado esquerdo.
+     */
+
     draw_box(
         LEFT,
         CEILING,
@@ -2153,6 +2067,10 @@ void draw_room(void)
         59,
         54
     );
+
+    /*
+     * Parede do fundo, lado direito.
+     */
 
     draw_box(
         100,
@@ -2166,6 +2084,10 @@ void draw_room(void)
         54
     );
 
+    /*
+     * Área ao redor da janela.
+     */
+
     draw_box(
         -100,
         -50,
@@ -2177,6 +2099,10 @@ void draw_room(void)
         59,
         54
     );
+
+    /*
+     * Parte inferior da parede do fundo.
+     */
 
     draw_box(
         LEFT,
@@ -2190,25 +2116,49 @@ void draw_room(void)
         54
     );
 
+    /*
+     * Detalhes.
+     */
+
     draw_floor_tiles();
+
     draw_left_plaster();
+
     draw_right_plaster();
+
     draw_back_plaster();
+
     draw_window();
+
     draw_door();
+
     draw_ceiling_fan();
+
     draw_bed();
+
     draw_tv_area();
+
     draw_sofa();
+
     draw_coffee_table();
+
     draw_side_table();
+
     draw_bookshelf();
+
     draw_plant();
+
     draw_picture();
+
     draw_floor_mess();
+
     draw_small_objects();
 }
 
+
+/*
+ * Programa principal.
+ */
 
 int main(void)
 {
@@ -2232,10 +2182,11 @@ int main(void)
     while (1)
     {
         set_camera(&camera);
+
         draw_room();
+
         display();
     }
 
     return 0;
 }
-
