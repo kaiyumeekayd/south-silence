@@ -22,7 +22,10 @@ int main(void)
     DISPENV disp;
     DRAWENV draw;
 
-    /* Inicializa GPU */
+    /* -------------------------
+       GPU
+       ------------------------- */
+
     ResetGraph(0);
 
     SetDefDispEnv(
@@ -41,8 +44,13 @@ int main(void)
         SCREEN_HEIGHT
     );
 
-    /* Fundo escuro */
-    setRGB0(&draw, 12, 12, 16);
+    setRGB0(
+        &draw,
+        12,
+        12,
+        16
+    );
+
     draw.isbg = 1;
 
     PutDispEnv(&disp);
@@ -50,98 +58,97 @@ int main(void)
 
     SetDispMask(1);
 
-    /*
-     * Inicializa o GTE.
-     *
-     * O GTE é o responsável pelas transformações
-     * 3D e pela perspectiva no PlayStation.
-     */
+
+    /* -------------------------
+       GTE
+       ------------------------- */
+
     InitGeom();
 
-    /*
-     * Centro da tela.
-     */
     SetGeomOffset(
         SCREEN_WIDTH / 2,
         SCREEN_HEIGHT / 2
     );
 
-    /*
-     * Distância focal.
-     */
     SetGeomScreen(256);
 
-    /*
-     * Matriz de rotação = identidade.
-     *
-     * Portanto, nosso triângulo inicialmente
-     * não possui rotação.
-     */
+
+    /* -------------------------
+       3D transformation
+       ------------------------- */
+
+    SVECTOR rotation = {0, 0, 0, 0};
+
+    VECTOR translation = {
+        0,
+        0,
+        0,
+        0
+    };
+
     MATRIX matrix;
 
-    matrix.m[0][0] = 4096;
-    matrix.m[0][1] = 0;
-    matrix.m[0][2] = 0;
+    RotMatrix(
+        &rotation,
+        &matrix
+    );
 
-    matrix.m[1][0] = 0;
-    matrix.m[1][1] = 4096;
-    matrix.m[1][2] = 0;
-
-    matrix.m[2][0] = 0;
-    matrix.m[2][1] = 0;
-    matrix.m[2][2] = 4096;
-
-    matrix.t[0] = 0;
-    matrix.t[1] = 0;
-    matrix.t[2] = 0;
+    TransMatrix(
+        &matrix,
+        &translation
+    );
 
     SetRotMatrix(&matrix);
     SetTransMatrix(&matrix);
 
-    /*
-     * Três vértices 3D.
-     *
-     * O eixo Z representa a distância da câmera.
-     */
-    SVECTOR v0 = { -100, -70, 500, 0 };
-    SVECTOR v1 = {  100, -70, 500, 0 };
-    SVECTOR v2 = {    0, 100, 700, 0 };
 
-    long p;
-    long flag;
+    /* -------------------------
+       Triangle vertices
+       ------------------------- */
 
-    int16_t x0;
-    int16_t y0;
-    int16_t x1;
-    int16_t y1;
-    int16_t x2;
-    int16_t y2;
+    SVECTOR v0 = {
+        -100,
+        -70,
+        500,
+        0
+    };
+
+    SVECTOR v1 = {
+         100,
+        -70,
+        500,
+        0
+    };
+
+    SVECTOR v2 = {
+           0,
+         100,
+        700,
+        0
+    };
+
 
     while (1)
     {
-        ClearOTagR(ctx.ot, OT_LENGTH);
+        long p;
+        long flag;
 
-        /*
-         * Transformação 3D + perspectiva.
-         *
-         * O GTE transforma os três vértices
-         * e gera suas coordenadas na tela.
-         */
-        gte_ldv3(
-            &v0,
-            &v1,
-            &v2
+        long otz0;
+        long otz1;
+        long otz2;
+
+        long x0;
+        long x1;
+        long x2;
+
+        /* Limpa Ordering Table */
+        ClearOTagR(
+            ctx.ot,
+            OT_LENGTH
         );
 
-        gte_rtpt();
 
-        gte_stsxy0(&ctx.poly.x0);
-        gte_stsxy1(&ctx.poly.x1);
-        gte_stsxy2(&ctx.poly.x2);
-
-        /*
-         * Triângulo flat-shaded.
-         */
+        /* Inicializa triângulo */
         setPolyF3(&ctx.poly);
 
         setRGB0(
@@ -151,17 +158,78 @@ int main(void)
             180
         );
 
+
         /*
-         * Coloca o triângulo na Ordering Table.
+         * Transformação 3D + perspectiva.
+         *
+         * O GTE transforma cada vértice
+         * diretamente para coordenadas
+         * de tela.
          */
+
+        otz0 = RotTransPers(
+            &v0,
+            &x0,
+            &p,
+            &flag
+        );
+
+        otz1 = RotTransPers(
+            &v1,
+            &x1,
+            &p,
+            &flag
+        );
+
+        otz2 = RotTransPers(
+            &v2,
+            &x2,
+            &p,
+            &flag
+        );
+
+
+        /*
+         * RotTransPers retorna as
+         * coordenadas X/Y empacotadas
+         * em um long.
+         */
+
+        ctx.poly.x0 = x0 & 0xFFFF;
+        ctx.poly.y0 = (x0 >> 16) & 0xFFFF;
+
+        ctx.poly.x1 = x1 & 0xFFFF;
+        ctx.poly.y1 = (x1 >> 16) & 0xFFFF;
+
+        ctx.poly.x2 = x2 & 0xFFFF;
+        ctx.poly.y2 = (x2 >> 16) & 0xFFFF;
+
+
+        /*
+         * Usa a profundidade média
+         * para ordenar o triângulo.
+         */
+
+        long otz =
+            (otz0 + otz1 + otz2) / 3;
+
+        if (otz < 1)
+            otz = 1;
+
+        if (otz >= OT_LENGTH)
+            otz = OT_LENGTH - 1;
+
+
         addPrim(
-            &ctx.ot[8],
+            &ctx.ot[otz],
             &ctx.poly
         );
+
 
         /*
          * Envia para a GPU.
          */
+
         DrawOTag(
             &ctx.ot[OT_LENGTH - 1]
         );
