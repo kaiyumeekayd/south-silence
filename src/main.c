@@ -17,7 +17,7 @@ typedef struct
 
 typedef struct
 {
-    POLY_F3 polygons[12];
+    POLY_F3 polygons[6];
     uint32_t ot[OT_LENGTH];
 } RenderContext;
 
@@ -88,25 +88,24 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * CUBO 3D
+     * CUBO
      *
-     * Frente: Z = 350
-     * Trás:   Z = 500
+     * Frente = Z 350
+     * Trás   = Z 500
      */
-
     Vertex3D v[8] =
     {
         /* Frente */
-        { -70,  70, 350 },
-        {  70,  70, 350 },
-        {  70, -70, 350 },
-        { -70, -70, 350 },
+        { -70,  70, 350 },  /* 0 */
+        {  70,  70, 350 },  /* 1 */
+        {  70, -70, 350 },  /* 2 */
+        { -70, -70, 350 },  /* 3 */
 
         /* Trás */
-        { -70,  70, 500 },
-        {  70,  70, 500 },
-        {  70, -70, 500 },
-        { -70, -70, 500 }
+        { -70,  70, 500 },  /* 4 */
+        {  70,  70, 500 },  /* 5 */
+        {  70, -70, 500 },  /* 6 */
+        { -70, -70, 500 }   /* 7 */
     };
 
     while (1)
@@ -114,122 +113,73 @@ int main(void)
         ClearOTagR(ctx.ot, OT_LENGTH);
 
         /*
-         * FACE DA FRENTE
+         * TOPO
+         *
+         * Fica mais distante que a frente,
+         * portanto será desenhado antes.
          */
-
         make_triangle(
             &ctx.polygons[0],
-            v[0], v[1], v[2],
-            140, 140, 140
+            v[0], v[4], v[5],
+            100, 100, 100
         );
 
         make_triangle(
             &ctx.polygons[1],
-            v[0], v[2], v[3],
-            140, 140, 140
-        );
-
-        /*
-         * FACE DE TRÁS
-         */
-
-        make_triangle(
-            &ctx.polygons[2],
-            v[4], v[6], v[5],
-            60, 60, 60
-        );
-
-        make_triangle(
-            &ctx.polygons[3],
-            v[4], v[7], v[6],
-            60, 60, 60
-        );
-
-        /*
-         * LADO ESQUERDO
-         */
-
-        make_triangle(
-            &ctx.polygons[4],
-            v[0], v[3], v[7],
-            90, 90, 90
-        );
-
-        make_triangle(
-            &ctx.polygons[5],
-            v[0], v[7], v[4],
-            90, 90, 90
+            v[0], v[5], v[1],
+            100, 100, 100
         );
 
         /*
          * LADO DIREITO
          */
-
         make_triangle(
-            &ctx.polygons[6],
+            &ctx.polygons[2],
             v[1], v[5], v[6],
-            110, 110, 110
+            70, 70, 70
         );
 
         make_triangle(
-            &ctx.polygons[7],
+            &ctx.polygons[3],
             v[1], v[6], v[2],
-            110, 110, 110
-        );
-
-        /*
-         * TOPO
-         */
-
-        make_triangle(
-            &ctx.polygons[8],
-            v[0], v[4], v[5],
-            120, 120, 120
-        );
-
-        make_triangle(
-            &ctx.polygons[9],
-            v[0], v[5], v[1],
-            120, 120, 120
-        );
-
-        /*
-         * BASE
-         */
-
-        make_triangle(
-            &ctx.polygons[10],
-            v[3], v[2], v[6],
-            70, 70, 70
-        );
-
-        make_triangle(
-            &ctx.polygons[11],
-            v[3], v[6], v[7],
             70, 70, 70
         );
 
         /*
-         * Coloca os 12 polígonos na OT.
+         * FRENTE
+         *
+         * É a face mais próxima,
+         * então será desenhada por último.
          */
+        make_triangle(
+            &ctx.polygons[4],
+            v[0], v[1], v[2],
+            150, 150, 150
+        );
 
-        for (int i = 0; i < 12; i++)
-        {
-            addPrim(
-                &ctx.ot[1],
-                &ctx.polygons[i]
-            );
-        }
+        make_triangle(
+            &ctx.polygons[5],
+            v[0], v[2], v[3],
+            150, 150, 150
+        );
 
         /*
-         * Começa a execução da OT
-         * exatamente onde os polígonos
-         * foram colocados.
+         * Painter's algorithm:
+         *
+         * maior índice = desenhado primeiro
+         * menor índice = desenhado depois
          */
 
-        DrawOTag(
-            &ctx.ot[1]
-        );
+        addPrim(&ctx.ot[14], &ctx.polygons[0]);
+        addPrim(&ctx.ot[14], &ctx.polygons[1]);
+
+        addPrim(&ctx.ot[13], &ctx.polygons[2]);
+        addPrim(&ctx.ot[13], &ctx.polygons[3]);
+
+        addPrim(&ctx.ot[12], &ctx.polygons[4]);
+        addPrim(&ctx.ot[12], &ctx.polygons[5]);
+
+        DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
         VSync(0);
     }
