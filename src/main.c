@@ -1,122 +1,29 @@
 #include <stdint.h>
+
 #include <psxgpu.h>
+#include <psxgte.h>
 #include <psxetc.h>
 
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
 
-#define FOCAL_LENGTH 256
-#define CAMERA_HEIGHT 0
-
 #define OT_LENGTH 16
 
 typedef struct
 {
-    long x;
-    long y;
-    long z;
-} Vertex3D;
-
-typedef struct
-{
-    POLY_F3 polygons[12];
+    POLY_F3 poly;
     uint32_t ot[OT_LENGTH];
 } RenderContext;
 
-
-/*
- * ============================================================
- * PROJEÇÃO 3D -> 2D
- * ============================================================
- *
- * Quanto maior o Z:
- *   - mais longe da câmera
- *   - menor o objeto na tela
- *
- * Quanto menor o Z:
- *   - mais perto da câmera
- *   - maior o objeto na tela
- */
-
-static int project_x(Vertex3D v)
-{
-    return 160 + (int)((v.x * FOCAL_LENGTH) / v.z);
-}
-
-static int project_y(Vertex3D v)
-{
-    return 120
-        - (int)((v.y * FOCAL_LENGTH) / v.z)
-        + (int)((CAMERA_HEIGHT * FOCAL_LENGTH) / v.z);
-}
-
-
-/*
- * ============================================================
- * CRIA TRIÂNGULO
- * ============================================================
- */
-
-static void make_triangle(
-    POLY_F3 *poly,
-    Vertex3D a,
-    Vertex3D b,
-    Vertex3D c,
-    int r,
-    int g,
-    int bcol
-)
-{
-    setPolyF3(poly);
-
-    setRGB0(poly, r, g, bcol);
-
-    setXY3(
-        poly,
-        project_x(a), project_y(a),
-        project_x(b), project_y(b),
-        project_x(c), project_y(c)
-    );
-}
-
-
-/*
- * ============================================================
- * CUBO
- * ============================================================
- *
- * Frente: Z = 300
- * Trás:   Z = 500
- *
- * Isso significa que a parte de trás está realmente mais longe.
- *
- *
- *             v4 -------- v5
- *            /|           /|
- *           / |          / |
- *         v7--|---------v6 |
- *          |  |          | |
- *          |  v0 --------|-v1
- *          | /           | /
- *          |/            |/
- *         v3 ------------v2
- *
- */
+static RenderContext ctx;
 
 int main(void)
 {
     DISPENV disp;
     DRAWENV draw;
 
-    RenderContext ctx;
-
+    /* Inicializa GPU */
     ResetGraph(0);
-
-    /*
-     * --------------------------------------------------------
-     * DISPLAY
-     * --------------------------------------------------------
-     */
 
     SetDefDispEnv(
         &disp,
@@ -134,12 +41,8 @@ int main(void)
         SCREEN_HEIGHT
     );
 
-    /*
-     * Fundo escuro
-     */
-
+    /* Fundo escuro */
     setRGB0(&draw, 12, 12, 16);
-
     draw.isbg = 1;
 
     PutDispEnv(&disp);
@@ -147,171 +50,121 @@ int main(void)
 
     SetDispMask(1);
 
+    /*
+     * Inicializa o GTE.
+     *
+     * O GTE é o responsável pelas transformações
+     * 3D e pela perspectiva no PlayStation.
+     */
+    InitGeom();
 
     /*
-     * ========================================================
-     * VÉRTICES DO CUBO
-     * ========================================================
-     *
-     * Frente:
-     * Z = 300
-     *
-     * Trás:
-     * Z = 500
-     *
-     * A diferença de Z é o que cria a perspectiva.
+     * Centro da tela.
      */
+    SetGeomOffset(
+        SCREEN_WIDTH / 2,
+        SCREEN_HEIGHT / 2
+    );
 
-    Vertex3D v0 = { -60,  60, 300 };
-    Vertex3D v1 = {  60,  60, 300 };
-    Vertex3D v2 = {  60, -60, 300 };
-    Vertex3D v3 = { -60, -60, 300 };
+    /*
+     * Distância focal.
+     */
+    SetGeomScreen(256);
 
-    Vertex3D v4 = { -60,  60, 500 };
-    Vertex3D v5 = {  60,  60, 500 };
-    Vertex3D v6 = {  60, -60, 500 };
-    Vertex3D v7 = { -60, -60, 500 };
+    /*
+     * Matriz de rotação = identidade.
+     *
+     * Portanto, nosso triângulo inicialmente
+     * não possui rotação.
+     */
+    MATRIX matrix;
 
+    matrix.m[0][0] = 4096;
+    matrix.m[0][1] = 0;
+    matrix.m[0][2] = 0;
+
+    matrix.m[1][0] = 0;
+    matrix.m[1][1] = 4096;
+    matrix.m[1][2] = 0;
+
+    matrix.m[2][0] = 0;
+    matrix.m[2][1] = 0;
+    matrix.m[2][2] = 4096;
+
+    matrix.t[0] = 0;
+    matrix.t[1] = 0;
+    matrix.t[2] = 0;
+
+    SetRotMatrix(&matrix);
+    SetTransMatrix(&matrix);
+
+    /*
+     * Três vértices 3D.
+     *
+     * O eixo Z representa a distância da câmera.
+     */
+    SVECTOR v0 = { -100, -70, 500, 0 };
+    SVECTOR v1 = {  100, -70, 500, 0 };
+    SVECTOR v2 = {    0, 100, 700, 0 };
+
+    long p;
+    long flag;
+
+    int16_t x0;
+    int16_t y0;
+    int16_t x1;
+    int16_t y1;
+    int16_t x2;
+    int16_t y2;
 
     while (1)
     {
         ClearOTagR(ctx.ot, OT_LENGTH);
 
+        /*
+         * Transformação 3D + perspectiva.
+         *
+         * O GTE transforma os três vértices
+         * e gera suas coordenadas na tela.
+         */
+        gte_ldv3(
+            &v0,
+            &v1,
+            &v2
+        );
+
+        gte_rtpt();
+
+        gte_stsxy0(&ctx.poly.x0);
+        gte_stsxy1(&ctx.poly.x1);
+        gte_stsxy2(&ctx.poly.x2);
 
         /*
-         * ====================================================
-         * FACE DA FRENTE
-         * ====================================================
+         * Triângulo flat-shaded.
          */
+        setPolyF3(&ctx.poly);
 
-        make_triangle(
-            &ctx.polygons[0],
-            v0, v1, v2,
-            180, 180, 180
+        setRGB0(
+            &ctx.poly,
+            180,
+            180,
+            180
         );
-
-        make_triangle(
-            &ctx.polygons[1],
-            v0, v2, v3,
-            160, 160, 160
-        );
-
 
         /*
-         * ====================================================
-         * FACE DE TRÁS
-         * ====================================================
+         * Coloca o triângulo na Ordering Table.
          */
-
-        make_triangle(
-            &ctx.polygons[2],
-            v4, v6, v5,
-            80, 80, 80
+        addPrim(
+            &ctx.ot[8],
+            &ctx.poly
         );
-
-        make_triangle(
-            &ctx.polygons[3],
-            v4, v7, v6,
-            70, 70, 70
-        );
-
 
         /*
-         * ====================================================
-         * LADO DIREITO
-         * ====================================================
+         * Envia para a GPU.
          */
-
-        make_triangle(
-            &ctx.polygons[4],
-            v1, v5, v6,
-            130, 130, 130
+        DrawOTag(
+            &ctx.ot[OT_LENGTH - 1]
         );
-
-        make_triangle(
-            &ctx.polygons[5],
-            v1, v6, v2,
-            115, 115, 115
-        );
-
-
-        /*
-         * ====================================================
-         * LADO ESQUERDO
-         * ====================================================
-         */
-
-        make_triangle(
-            &ctx.polygons[6],
-            v4, v0, v3,
-            100, 100, 100
-        );
-
-        make_triangle(
-            &ctx.polygons[7],
-            v4, v3, v7,
-            90, 90, 90
-        );
-
-
-        /*
-         * ====================================================
-         * TOPO
-         * ====================================================
-         */
-
-        make_triangle(
-            &ctx.polygons[8],
-            v4, v5, v1,
-            150, 150, 150
-        );
-
-        make_triangle(
-            &ctx.polygons[9],
-            v4, v1, v0,
-            140, 140, 140
-        );
-
-
-        /*
-         * ====================================================
-         * BASE
-         * ====================================================
-         */
-
-        make_triangle(
-            &ctx.polygons[10],
-            v3, v2, v6,
-            60, 60, 60
-        );
-
-        make_triangle(
-            &ctx.polygons[11],
-            v3, v6, v7,
-            50, 50, 50
-        );
-
-
-        /*
-         * ====================================================
-         * ORDERING TABLE
-         * ====================================================
-         */
-
-        for (int i = 0; i < 12; i++)
-        {
-            addPrim(
-                &ctx.ot[12],
-                &ctx.polygons[i]
-            );
-        }
-
-
-        /*
-         * Desenha a Ordering Table
-         */
-
-        DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
         VSync(0);
     }
