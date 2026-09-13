@@ -5,31 +5,51 @@
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
 
+#define FOCAL_LENGTH 256
 #define OT_LENGTH 16
 
 typedef struct
 {
-    POLY_F3 polygons[3];
+    long x;
+    long y;
+    long z;
+} Vertex3D;
+
+typedef struct
+{
+    POLY_F3 polygons[2];
     uint32_t ot[OT_LENGTH];
 } RenderContext;
 
+static int project_x(Vertex3D v)
+{
+    return 160 + (int)((v.x * FOCAL_LENGTH) / v.z);
+}
+
+static int project_y(Vertex3D v)
+{
+    return 120 - (int)((v.y * FOCAL_LENGTH) / v.z);
+}
+
 static void make_triangle(
     POLY_F3 *poly,
-    int x0, int y0,
-    int x1, int y1,
-    int x2, int y2,
-    int r, int g, int b
+    Vertex3D a,
+    Vertex3D b,
+    Vertex3D c,
+    int r,
+    int g,
+    int bcol
 )
 {
     setPolyF3(poly);
 
-    setRGB0(poly, r, g, b);
+    setRGB0(poly, r, g, bcol);
 
     setXY3(
         poly,
-        x0, y0,
-        x1, y1,
-        x2, y2
+        project_x(a), project_y(a),
+        project_x(b), project_y(b),
+        project_x(c), project_y(c)
     );
 }
 
@@ -67,46 +87,48 @@ int main(void)
 
     SetDispMask(1);
 
+    /*
+     * QUADRILÁTERO 3D
+     *
+     * Os dois pontos da esquerda
+     * estão mais próximos.
+     *
+     * Os dois pontos da direita
+     * estão mais distantes.
+     *
+     * Isso deve produzir perspectiva
+     * visível na tela.
+     */
+
+    Vertex3D v0 = { -100,  70, 250 };
+    Vertex3D v1 = {  100,  70, 450 };
+    Vertex3D v2 = {  100, -70, 450 };
+    Vertex3D v3 = { -100, -70, 250 };
+
     while (1)
     {
         ClearOTagR(ctx.ot, OT_LENGTH);
 
         /*
-         * TRIÂNGULO 1
+         * Primeiro triângulo
          */
         make_triangle(
             &ctx.polygons[0],
-            40, 40,
-            120, 40,
-            80, 100,
+            v0, v1, v2,
             180, 180, 180
         );
 
         /*
-         * TRIÂNGULO 2
+         * Segundo triângulo
          */
         make_triangle(
             &ctx.polygons[1],
-            120, 100,
-            200, 100,
-            160, 160,
+            v0, v2, v3,
             100, 100, 100
         );
 
-        /*
-         * TRIÂNGULO 3
-         */
-        make_triangle(
-            &ctx.polygons[2],
-            200, 40,
-            280, 40,
-            240, 100,
-            60, 60, 60
-        );
-
         addPrim(&ctx.ot[12], &ctx.polygons[0]);
-        addPrim(&ctx.ot[11], &ctx.polygons[1]);
-        addPrim(&ctx.ot[10], &ctx.polygons[2]);
+        addPrim(&ctx.ot[12], &ctx.polygons[1]);
 
         DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
