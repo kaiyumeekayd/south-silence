@@ -156,6 +156,9 @@ void init_graphics(void)
     SetDispMask(1);
 
     db_active = 0;
+
+    db_nextpri =
+        db[0].packet;
 }
 
 
@@ -416,10 +419,6 @@ int main(void)
        DIMENSÕES DA PORTA
        ===================================================== */
 
-    /*
-     * A porta fica na parede esquerda.
-     */
-
     const int DOOR_FRONT = 80;
     const int DOOR_BACK  = 230;
 
@@ -530,27 +529,6 @@ int main(void)
        PAREDE ESQUERDA
        ===================================================== */
 
-    /*
-     * A parede esquerda será dividida ao redor
-     * da abertura da porta.
-     *
-     *     PAREDE
-     *
-     * ┌───────────────┐
-     * │               │
-     * │   ┌───────┐   │
-     * │   │ PORTA │   │
-     * │   │       │   │
-     * │   └───────┘   │
-     * │               │
-     * └───────────────┘
-     */
-
-
-    /* -----------------------------------------------------
-       PARTE FRONTAL
-       ----------------------------------------------------- */
-
     SVECTOR left_front_a =
     {
         ROOM_LEFT,
@@ -579,10 +557,6 @@ int main(void)
         ROOM_FRONT
     };
 
-
-    /* -----------------------------------------------------
-       PARTE SUPERIOR
-       ----------------------------------------------------- */
 
     SVECTOR left_top_a =
     {
@@ -613,10 +587,6 @@ int main(void)
     };
 
 
-    /* -----------------------------------------------------
-       PARTE TRASEIRA
-       ----------------------------------------------------- */
-
     SVECTOR left_back_a =
     {
         ROOM_LEFT,
@@ -645,10 +615,6 @@ int main(void)
         DOOR_BACK
     };
 
-
-    /* -----------------------------------------------------
-       PARTE INFERIOR
-       ----------------------------------------------------- */
 
     SVECTOR left_bottom_a =
     {
@@ -683,16 +649,6 @@ int main(void)
        PAREDE DO FUNDO
        ===================================================== */
 
-    /*
-     * A parede traseira também é dividida ao redor
-     * da janela.
-     */
-
-
-    /* -----------------------------------------------------
-       PARTE SUPERIOR DA JANELA
-       ----------------------------------------------------- */
-
     SVECTOR back_top_a =
     {
         ROOM_LEFT,
@@ -721,10 +677,6 @@ int main(void)
         ROOM_BACK
     };
 
-
-    /* -----------------------------------------------------
-       PARTE INFERIOR DA JANELA
-       ----------------------------------------------------- */
 
     SVECTOR back_bottom_a =
     {
@@ -755,10 +707,6 @@ int main(void)
     };
 
 
-    /* -----------------------------------------------------
-       LADO ESQUERDO DA JANELA
-       ----------------------------------------------------- */
-
     SVECTOR back_left_a =
     {
         ROOM_LEFT,
@@ -787,10 +735,6 @@ int main(void)
         ROOM_BACK
     };
 
-
-    /* -----------------------------------------------------
-       LADO DIREITO DA JANELA
-       ----------------------------------------------------- */
 
     SVECTOR back_right_a =
     {
@@ -824,10 +768,6 @@ int main(void)
     /* =====================================================
        VIDRO DA JANELA
        ===================================================== */
-
-    /*
-     * Colocamos o vidro um pouco à frente da parede.
-     */
 
     SVECTOR window_a =
     {
@@ -865,10 +805,6 @@ int main(void)
     const int WINDOW_FRAME = 12;
 
 
-    /* -----------------------------------------------------
-       ESQUERDA
-       ----------------------------------------------------- */
-
     SVECTOR frame_left_a =
     {
         WINDOW_LEFT - WINDOW_FRAME,
@@ -897,10 +833,6 @@ int main(void)
         ROOM_BACK - 8
     };
 
-
-    /* -----------------------------------------------------
-       DIREITA
-       ----------------------------------------------------- */
 
     SVECTOR frame_right_a =
     {
@@ -931,10 +863,6 @@ int main(void)
     };
 
 
-    /* -----------------------------------------------------
-       TOPO
-       ----------------------------------------------------- */
-
     SVECTOR frame_top_a =
     {
         WINDOW_LEFT - WINDOW_FRAME,
@@ -963,10 +891,6 @@ int main(void)
         ROOM_BACK - 8
     };
 
-
-    /* -----------------------------------------------------
-       INFERIOR
-       ----------------------------------------------------- */
 
     SVECTOR frame_bottom_a =
     {
@@ -1000,14 +924,6 @@ int main(void)
     /* =====================================================
        PORTA
        ===================================================== */
-
-    /*
-     * A porta fica ligeiramente para dentro da abertura.
-     *
-     * ROOM_LEFT = -300
-     *
-     * A superfície da porta fica em -296.
-     */
 
     SVECTOR door_a =
     {
@@ -1045,10 +961,6 @@ int main(void)
     const int DOOR_FRAME = 10;
 
 
-    /* -----------------------------------------------------
-       BATENTE FRONTAL
-       ----------------------------------------------------- */
-
     SVECTOR door_frame_front_a =
     {
         ROOM_LEFT + 2,
@@ -1078,10 +990,6 @@ int main(void)
     };
 
 
-    /* -----------------------------------------------------
-       BATENTE TRASEIRO
-       ----------------------------------------------------- */
-
     SVECTOR door_frame_back_a =
     {
         ROOM_LEFT + 2,
@@ -1110,10 +1018,6 @@ int main(void)
         DOOR_BACK + DOOR_FRAME
     };
 
-
-    /* -----------------------------------------------------
-       BATENTE SUPERIOR
-       ----------------------------------------------------- */
 
     SVECTOR door_frame_top_a =
     {
@@ -1151,4 +1055,148 @@ int main(void)
     init_graphics();
 
 
-    /* ==========================================
+    /* =====================================================
+       LOOP PRINCIPAL
+       ===================================================== */
+
+    while (1)
+    {
+        set_camera(&camera);
+
+
+        /* -------------------------------------------------
+           PISO
+           ------------------------------------------------- */
+
+        draw_quad(
+            &floor_a,
+            &floor_b,
+            &floor_c,
+            &floor_d,
+            55,
+            55,
+            60
+        );
+
+
+        /* -------------------------------------------------
+           TETO
+           ------------------------------------------------- */
+
+        draw_quad(
+            &ceiling_a,
+            &ceiling_b,
+            &ceiling_c,
+            &ceiling_d,
+            35,
+            35,
+            40
+        );
+
+
+        /* -------------------------------------------------
+           PAREDE DIREITA
+           ------------------------------------------------- */
+
+        draw_quad(
+            &right_a,
+            &right_b,
+            &right_c,
+            &right_d,
+            75,
+            70,
+            65
+        );
+
+
+        /* -------------------------------------------------
+           PAREDE ESQUERDA
+           ------------------------------------------------- */
+
+        draw_quad(
+            &left_front_a,
+            &left_front_b,
+            &left_front_c,
+            &left_front_d,
+            70,
+            65,
+            60
+        );
+
+        draw_quad(
+            &left_top_a,
+            &left_top_b,
+            &left_top_c,
+            &left_top_d,
+            70,
+            65,
+            60
+        );
+
+        draw_quad(
+            &left_back_a,
+            &left_back_b,
+            &left_back_c,
+            &left_back_d,
+            70,
+            65,
+            60
+        );
+
+        draw_quad(
+            &left_bottom_a,
+            &left_bottom_b,
+            &left_bottom_c,
+            &left_bottom_d,
+            70,
+            65,
+            60
+        );
+
+
+        /* -------------------------------------------------
+           PAREDE DO FUNDO
+           ------------------------------------------------- */
+
+        draw_quad(
+            &back_top_a,
+            &back_top_b,
+            &back_top_c,
+            &back_top_d,
+            72,
+            67,
+            62
+        );
+
+        draw_quad(
+            &back_bottom_a,
+            &back_bottom_b,
+            &back_bottom_c,
+            &back_bottom_d,
+            72,
+            67,
+            62
+        );
+
+        draw_quad(
+            &back_left_a,
+            &back_left_b,
+            &back_left_c,
+            &back_left_d,
+            72,
+            67,
+            62
+        );
+
+        draw_quad(
+            &back_right_a,
+            &back_right_b,
+            &back_right_c,
+            &back_right_d,
+            72,
+            67,
+            62
+        );
+
+
+        /* 
