@@ -34,7 +34,96 @@ typedef struct
     VECTOR position;
 } Camera;
 
+static uint16_t make_rgb15(int r, int g, int b)
+{
+    return (uint16_t)(
+        ((r >> 3) & 31) |
+        (((g >> 3) & 31) << 5) |
+        (((b >> 3) & 31) << 10)
+    );
+}
 
+static uint32_t texture_noise(uint32_t x, uint32_t y)
+{
+    uint32_t n;
+
+    n = x * 374761393u;
+    n += y * 668265263u;
+    n = (n ^ (n >> 13)) * 1274126177u;
+    n ^= n >> 16;
+
+    return n;
+}
+
+static void init_textures(void)
+{
+    int x;
+    int y;
+
+    for (y = 0; y < TEX_H; y++)
+    {
+        for (x = 0; x < TEX_W; x++)
+        {
+            uint32_t n;
+            int variation;
+            int r;
+            int g;
+            int b;
+
+            n = texture_noise(
+                (uint32_t)x,
+                (uint32_t)y
+            );
+
+            variation = (int)(n & 31) - 15;
+
+            r = 128 + variation;
+            g = 124 + variation;
+            b = 118 + variation;
+
+            if (((n >> 8) & 31) == 0)
+            {
+                r -= 18;
+                g -= 18;
+                b -= 18;
+            }
+
+            if (r < 0) r = 0;
+            if (g < 0) g = 0;
+            if (b < 0) b = 0;
+
+            if (r > 255) r = 255;
+            if (g > 255) g = 255;
+            if (b > 255) b = 255;
+
+            wall_texture[y * TEX_W + x] =
+                make_rgb15(r, g, b);
+        }
+    }
+
+    {
+        RECT rect;
+
+        rect.x = TEX_X;
+        rect.y = TEX_Y;
+        rect.w = TEX_W;
+        rect.h = TEX_H;
+
+        LoadImage(
+            &rect,
+            (uint32_t *)wall_texture
+        );
+    }
+
+    DrawSync(0);
+
+    wall_tpage = GetTPage(
+        2,
+        0,
+        TEX_X,
+        TEX_Y
+    );
+}
 void init_graphics(void)
 {
     ResetGraph(0);
