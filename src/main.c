@@ -8,7 +8,13 @@
 
 #define OT_LEN 256
 #define PACKET_LEN 65536
+#define TEX_W 64
+#define TEX_H 64
+#define TEX_X 640
+#define TEX_Y 256
 
+static uint16_t wall_texture[TEX_W * TEX_H];
+static uint16_t wall_tpage;
 typedef struct
 {
     DISPENV disp;
