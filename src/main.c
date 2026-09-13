@@ -443,17 +443,17 @@ int main(void)
      * ========================================================
      * CHÃO
      *
-     * TESTE DE ORIENTAÇÃO VERTICAL
+     * TESTE DE POSIÇÃO VERTICAL
      *
-     * Antes: Y = -120
-     * Agora: Y = 120
+     * Antes: Y = 120
+     * Agora: Y = 60
      * ========================================================
      */
 
     SVECTOR floor_a =
     {
         -250,
-         120,
+         60,
          300,
         0
     };
@@ -462,7 +462,7 @@ int main(void)
     SVECTOR floor_b =
     {
          250,
-         120,
+         60,
          300,
         0
     };
@@ -471,7 +471,7 @@ int main(void)
     SVECTOR floor_c =
     {
          250,
-         120,
+         60,
         -250,
         0
     };
@@ -480,7 +480,7 @@ int main(void)
     SVECTOR floor_d =
     {
         -250,
-         120,
+         60,
         -250,
         0
     };
