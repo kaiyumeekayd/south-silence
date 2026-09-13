@@ -4,13 +4,18 @@
 #include <psxgte.h>
 #include <inline_c.h>
 
-
 #define SCREEN_XRES 320
 #define SCREEN_YRES 240
 
-#define OT_LEN 256
-#define PACKET_LEN 8192
+#define OT_LEN      256
+#define PACKET_LEN  16384
 
+#define CENTER_X (SCREEN_XRES / 2)
+#define CENTER_Y (SCREEN_YRES / 2)
+
+/* ---------------------------------------------------------
+   Render buffer
+   --------------------------------------------------------- */
 
 typedef struct
 {
@@ -18,24 +23,19 @@ typedef struct
     DRAWENV draw;
 
     uint32_t ot[OT_LEN];
-
     char packet[PACKET_LEN];
 
 } RenderBuffer;
 
-
 RenderBuffer db[2];
 
 int db_active = 0;
-
 char *db_nextpri;
 
 
-/*
- * ============================================================
- * CÂMERA FIXA
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Camera
+   --------------------------------------------------------- */
 
 typedef struct
 {
@@ -45,366 +45,516 @@ typedef struct
 } Camera;
 
 
-/*
- * ============================================================
- * GRÁFICOS
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Inicialização gráfica
+   --------------------------------------------------------- */
 
 void init_graphics(void)
 {
     ResetGraph(0);
 
+    /* Buffer 0 */
 
-    /*
-     * FRAMEBUFFER 0
-     */
+    SetDefDispEnv(&db[0].disp, 0, 0,
+                  SCREEN_XRES,
+                  SCREEN_YRES);
 
-    SetDefDispEnv(
-        &db[0].disp,
-        0,
-        0,
-        SCREEN_XRES,
-        SCREEN_YRES
-    );
+    SetDefDrawEnv(&db[0].draw,
+                  SCREEN_XRES, 0,
+                  SCREEN_XRES,
+                  SCREEN_YRES);
 
-    SetDefDrawEnv(
-        &db[0].draw,
-        SCREEN_XRES,
-        0,
-        SCREEN_XRES,
-        SCREEN_YRES
-    );
+    /* Buffer 1 */
 
-    setRGB0(
-        &db[0].draw,
-        8,
-        8,
-        12
-    );
+    SetDefDispEnv(&db[1].disp,
+                  SCREEN_XRES, 0,
+                  SCREEN_XRES,
+                  SCREEN_YRES);
+
+    SetDefDrawEnv(&db[1].draw,
+                  0, 0,
+                  SCREEN_XRES,
+                  SCREEN_YRES);
+
+    /* Background */
+
+    setRGB0(&db[0].draw, 20, 20, 24);
+    setRGB0(&db[1].draw, 20, 20, 24);
 
     db[0].draw.isbg = 1;
-
-
-    /*
-     * FRAMEBUFFER 1
-     */
-
-    SetDefDispEnv(
-        &db[1].disp,
-        SCREEN_XRES,
-        0,
-        SCREEN_XRES,
-        SCREEN_YRES
-    );
-
-    SetDefDrawEnv(
-        &db[1].draw,
-        0,
-        0,
-        SCREEN_XRES,
-        SCREEN_YRES
-    );
-
-    setRGB0(
-        &db[1].draw,
-        8,
-        8,
-        12
-    );
-
     db[1].draw.isbg = 1;
 
+    ClearOTagR(db[0].ot, OT_LEN);
+    ClearOTagR(db[1].ot, OT_LEN);
 
-    /*
-     * ORDERING TABLE
-     */
-
-    ClearOTagR(
-        db[0].ot,
-        OT_LEN
-    );
-
-    ClearOTagR(
-        db[1].ot,
-        OT_LEN
-    );
-
+    db_active = 0;
 
     db_nextpri = db[0].packet;
 
-
-    /*
-     * GTE
-     */
+    /* GTE */
 
     InitGeom();
 
+    gte_SetGeomOffset(CENTER_X, CENTER_Y);
+    gte_SetGeomScreen(CENTER_X);
 
-    gte_SetGeomOffset(
-        SCREEN_XRES >> 1,
-        SCREEN_YRES >> 1
-    );
-
-
-    gte_SetGeomScreen(
-        SCREEN_XRES >> 1
-    );
-
-
-    /*
-     * TELA
-     */
-
-    PutDrawEnv(
-        &db[0].draw
-    );
-
-    PutDispEnv(
-        &db[0].disp
-    );
+    PutDrawEnv(&db[0].draw);
+    PutDispEnv(&db[0].disp);
 
     SetDispMask(1);
 }
 
 
-/*
- * ============================================================
- * TROCA DE FRAMEBUFFER
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Troca de buffer
+   --------------------------------------------------------- */
 
 void display(void)
 {
     DrawSync(0);
-
     VSync(0);
 
+    int old_buffer = db_active;
 
     db_active ^= 1;
 
+    ClearOTagR(db[db_active].ot, OT_LEN);
 
-    db_nextpri =
-        db[db_active].packet;
+    PutDrawEnv(&db[db_active].draw);
+    PutDispEnv(&db[db_active].disp);
 
+    DrawOTag(&db[old_buffer].ot[OT_LEN - 1]);
 
-    ClearOTagR(
-        db[db_active].ot,
-        OT_LEN
-    );
-
-
-    PutDrawEnv(
-        &db[db_active].draw
-    );
-
-    PutDispEnv(
-        &db[db_active].disp
-    );
-
-
-    DrawOTag(
-        db[1 - db_active].ot + (OT_LEN - 1)
-    );
+    db_nextpri = db[db_active].packet;
 }
 
 
-/*
- * ============================================================
- * CÂMERA
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Câmera
+   --------------------------------------------------------- */
 
 void set_camera(Camera *camera)
 {
     MATRIX matrix;
 
+    RotMatrix(&camera->rotation, &matrix);
+    TransMatrix(&matrix, &camera->position);
 
-    RotMatrix(
-        &camera->rotation,
-        &matrix
-    );
-
-
-    TransMatrix(
-        &matrix,
-        &camera->position
-    );
-
-
-    gte_SetRotMatrix(
-        &matrix
-    );
-
-
-    gte_SetTransMatrix(
-        &matrix
-    );
+    gte_SetRotMatrix(&matrix);
+    gte_SetTransMatrix(&matrix);
 }
 
 
-/*
- * ============================================================
- * TRIÂNGULO
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Triângulo 3D
+   --------------------------------------------------------- */
 
 void draw_triangle(
     SVECTOR *a,
     SVECTOR *b,
     SVECTOR *c,
-    int r,
-    int g,
-    int bcolor
-)
+    uint8_t r,
+    uint8_t g,
+    uint8_t bcolor)
 {
     POLY_F3 *poly;
 
     long depth;
 
-
-    poly =
-        (POLY_F3 *)db_nextpri;
-
+    poly = (POLY_F3 *)db_nextpri;
 
     setPolyF3(poly);
 
+    setRGB0(poly, r, g, bcolor);
 
-    setRGB0(
-        poly,
-        r,
-        g,
-        bcolor
-    );
-
-
-    /*
-     * GTE
-     */
-
-    gte_ldv3(
-        a,
-        b,
-        c
-    );
-
+    gte_ldv3(a, b, c);
 
     gte_rtpt();
 
-
-    /*
-     * Coordenadas de tela
-     */
-
-    gte_stsxy0(
-        &poly->x0
-    );
-
-    gte_stsxy1(
-        &poly->x1
-    );
-
-    gte_stsxy2(
-        &poly->x2
-    );
-
-
-    /*
-     * Profundidade
-     */
+    gte_stsxy0(&poly->x0);
+    gte_stsxy1(&poly->x1);
+    gte_stsxy2(&poly->x2);
 
     gte_avsz3();
 
-    gte_stotz(
-        &depth
-    );
-
+    gte_stotz(&depth);
 
     depth >>= 8;
-
 
     if (depth < 0)
         depth = 0;
 
-
     if (depth >= OT_LEN)
         depth = OT_LEN - 1;
-
-
-    /*
-     * Ordering Table
-     */
 
     addPrim(
         db[db_active].ot + depth,
         poly
     );
 
-
-    db_nextpri =
-        (char *)(poly + 1);
+    db_nextpri += sizeof(POLY_F3);
 }
 
 
-/*
- * ============================================================
- * QUADRILÁTERO
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Quadrado 3D
+   --------------------------------------------------------- */
 
 void draw_quad(
     SVECTOR *a,
     SVECTOR *b,
     SVECTOR *c,
     SVECTOR *d,
-    int r1,
-    int g1,
-    int b1,
-    int r2,
-    int g2,
-    int b2
-)
+    uint8_t r,
+    uint8_t g,
+    uint8_t bcolor)
 {
     draw_triangle(
-        a,
-        b,
-        c,
-        r1,
-        g1,
-        b1
+        a, b, c,
+        r, g, bcolor
     );
 
-
     draw_triangle(
-        a,
-        c,
-        d,
-        r2,
-        g2,
-        b2
+        a, c, d,
+        r, g, bcolor
     );
 }
 
 
-/*
- * ============================================================
- * SOUTH SILENCE
- *
- * PRIMEIRA SALA
- * ============================================================
- */
+/* ---------------------------------------------------------
+   Piso quadriculado
+   --------------------------------------------------------- */
+
+void draw_floor(void)
+{
+    int x;
+    int z;
+
+    for (z = -500; z < 300; z += 100)
+    {
+        for (x = -400; x < 400; x += 100)
+        {
+            SVECTOR a = { x,       150, z };
+            SVECTOR b = { x + 100, 150, z };
+            SVECTOR c = { x + 100, 150, z + 100 };
+            SVECTOR d = { x,       150, z + 100 };
+
+            if (((x / 100) + (z / 100)) & 1)
+            {
+                draw_quad(
+                    &a, &b, &c, &d,
+                    95, 70, 48
+                );
+            }
+            else
+            {
+                draw_quad(
+                    &a, &b, &c, &d,
+                    125, 92, 58
+                );
+            }
+        }
+    }
+}
+
+
+/* ---------------------------------------------------------
+   Teto
+   --------------------------------------------------------- */
+
+void draw_ceiling(void)
+{
+    SVECTOR a = { -400, -150, -500 };
+    SVECTOR b = {  400, -150, -500 };
+    SVECTOR c = {  400, -150,  300 };
+    SVECTOR d = { -400, -150,  300 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        70, 70, 78
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Parede esquerda
+   --------------------------------------------------------- */
+
+void draw_left_wall(void)
+{
+    SVECTOR a = { -400, -150, -500 };
+    SVECTOR b = { -400, -150,  300 };
+    SVECTOR c = { -400,  150,  300 };
+    SVECTOR d = { -400,  150, -500 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        55, 100, 65
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Parede direita
+   --------------------------------------------------------- */
+
+void draw_right_wall(void)
+{
+    SVECTOR a = { 400, -150,  300 };
+    SVECTOR b = { 400, -150, -500 };
+    SVECTOR c = { 400,  150, -500 };
+    SVECTOR d = { 400,  150,  300 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        65, 80, 125
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Parede traseira
+   --------------------------------------------------------- */
+
+void draw_back_wall(void)
+{
+    /* Parede esquerda da janela */
+
+    SVECTOR a1 = { -400, -150, -500 };
+    SVECTOR b1 = { -120, -150, -500 };
+    SVECTOR c1 = { -120,  150, -500 };
+    SVECTOR d1 = { -400,  150, -500 };
+
+    draw_quad(
+        &a1, &b1, &c1, &d1,
+        130, 65, 65
+    );
+
+
+    /* Parede direita da janela */
+
+    SVECTOR a2 = { 120, -150, -500 };
+    SVECTOR b2 = { 400, -150, -500 };
+    SVECTOR c2 = { 400,  150, -500 };
+    SVECTOR d2 = { 120,  150, -500 };
+
+    draw_quad(
+        &a2, &b2, &c2, &d2,
+        130, 65, 65
+    );
+
+
+    /* Parede acima da janela */
+
+    SVECTOR a3 = { -120, -150, -500 };
+    SVECTOR b3 = { 120, -150, -500 };
+    SVECTOR c3 = { 120, -60, -500 };
+    SVECTOR d3 = { -120, -60, -500 };
+
+    draw_quad(
+        &a3, &b3, &c3, &d3,
+        130, 65, 65
+    );
+
+
+    /* Parede abaixo da janela */
+
+    SVECTOR a4 = { -120, 60, -500 };
+    SVECTOR b4 = { 120, 60, -500 };
+    SVECTOR c4 = { 120, 150, -500 };
+    SVECTOR d4 = { -120, 150, -500 };
+
+    draw_quad(
+        &a4, &b4, &c4, &d4,
+        130, 65, 65
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Janela
+   --------------------------------------------------------- */
+
+void draw_window(void)
+{
+    /* Vidro */
+
+    SVECTOR a = { -110, -50, -490 };
+    SVECTOR b = {  110, -50, -490 };
+    SVECTOR c = {  110,  50, -490 };
+    SVECTOR d = { -110,  50, -490 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        40, 100, 150
+    );
+
+
+    /* Moldura esquerda */
+
+    SVECTOR l1 = { -125, -65, -480 };
+    SVECTOR l2 = { -110, -65, -480 };
+    SVECTOR l3 = { -110,  65, -480 };
+    SVECTOR l4 = { -125,  65, -480 };
+
+    draw_quad(
+        &l1, &l2, &l3, &l4,
+        90, 60, 35
+    );
+
+
+    /* Moldura direita */
+
+    SVECTOR r1 = { 110, -65, -480 };
+    SVECTOR r2 = { 125, -65, -480 };
+    SVECTOR r3 = { 125,  65, -480 };
+    SVECTOR r4 = { 110,  65, -480 };
+
+    draw_quad(
+        &r1, &r2, &r3, &r4,
+        90, 60, 35
+    );
+
+
+    /* Moldura superior */
+
+    SVECTOR t1 = { -125, -65, -480 };
+    SVECTOR t2 = { 125, -65, -480 };
+    SVECTOR t3 = { 125, -50, -480 };
+    SVECTOR t4 = { -125, -50, -480 };
+
+    draw_quad(
+        &t1, &t2, &t3, &t4,
+        90, 60, 35
+    );
+
+
+    /* Moldura inferior */
+
+    SVECTOR b1 = { -125, 50, -480 };
+    SVECTOR b2 = { 125, 50, -480 };
+    SVECTOR b3 = { 125, 65, -480 };
+    SVECTOR b4 = { -125, 65, -480 };
+
+    draw_quad(
+        &b1, &b2, &b3, &b4,
+        90, 60, 35
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Cama
+   --------------------------------------------------------- */
+
+void draw_bed(void)
+{
+    /* Colchão */
+
+    SVECTOR a = { -260, 80, -100 };
+    SVECTOR b = { -20,  80, -100 };
+    SVECTOR c = { -20,  80, 100 };
+    SVECTOR d = { -260, 80, 100 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        175, 175, 180
+    );
+
+    /* Base */
+
+    SVECTOR a2 = { -260, 80, -100 };
+    SVECTOR b2 = { -20,  80, -100 };
+    SVECTOR c2 = { -20, 140, 100 };
+    SVECTOR d2 = { -260, 140, 100 };
+
+    draw_quad(
+        &a2, &b2, &c2, &d2,
+        90, 45, 30
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Mesa
+   --------------------------------------------------------- */
+
+void draw_table(void)
+{
+    /* Tampo */
+
+    SVECTOR a = { 120, 70, 80 };
+    SVECTOR b = { 280, 70, 80 };
+    SVECTOR c = { 280, 70, 200 };
+    SVECTOR d = { 120, 70, 200 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        160, 105, 55
+    );
+
+    /* Perna 1 */
+
+    SVECTOR p1 = { 130, 70, 90 };
+    SVECTOR p2 = { 145, 70, 90 };
+    SVECTOR p3 = { 145, 150, 90 };
+    SVECTOR p4 = { 130, 150, 90 };
+
+    draw_quad(
+        &p1, &p2, &p3, &p4,
+        100, 60, 30
+    );
+
+
+    /* Perna 2 */
+
+    SVECTOR q1 = { 255, 70, 90 };
+    SVECTOR q2 = { 270, 70, 90 };
+    SVECTOR q3 = { 270, 150, 90 };
+    SVECTOR q4 = { 255, 150, 90 };
+
+    draw_quad(
+        &q1, &q2, &q3, &q4,
+        100, 60, 30
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Caixa
+   --------------------------------------------------------- */
+
+void draw_box(void)
+{
+    SVECTOR a = { 20, 100, 230 };
+    SVECTOR b = { 100, 100, 230 };
+    SVECTOR c = { 100, 150, 230 };
+    SVECTOR d = { 20, 150, 230 };
+
+    draw_quad(
+        &a, &b, &c, &d,
+        180, 150, 35
+    );
+}
+
+
+/* ---------------------------------------------------------
+   MAIN
+   --------------------------------------------------------- */
 
 int main(void)
 {
+    init_graphics();
+
     /*
-     * ========================================================
-     * CÂMERA FIXA
-     *
-     * Câmera elevada olhando para o interior.
-     *
-     * 768 = inclinação aproximada para baixo.
-     * ========================================================
-     */
+       A câmera é elevada e inclinada.
+
+       768 = rotação aproximada de 67,5 graus
+       no eixo X.
+
+       A posição Z coloca a sala dentro
+       do volume visível do GTE.
+    */
 
     Camera camera =
     {
@@ -423,872 +573,41 @@ int main(void)
     };
 
 
-    /*
-     * ========================================================
-     * DIMENSÕES DA SALA
-     * ========================================================
-     *
-     * X = largura
-     * Y = altura
-     * Z = profundidade
-     *
-     * Chão:
-     *     Y = 150
-     *
-     * Teto:
-     *     Y = -150
-     *
-     * Fundo:
-     *     Z = 500
-     *
-     * Frente:
-     *     Z = 0
-     *
-     * ========================================================
-     */
-
-
-    /*
-     * ========================================================
-     * CHÃO
-     * ========================================================
-     */
-
-    SVECTOR floor_a =
+    for (;;)
     {
-        -300,
-         150,
-           0,
-        0
-    };
+        /* Câmera */
 
-    SVECTOR floor_b =
-    {
-         300,
-         150,
-           0,
-        0
-    };
+        set_camera(&camera);
 
-    SVECTOR floor_c =
-    {
-         300,
-         150,
-         500,
-        0
-    };
 
-    SVECTOR floor_d =
-    {
-        -300,
-         150,
-         500,
-        0
-    };
+        /* Sala */
 
+        draw_floor();
 
-    /*
-     * ========================================================
-     * TETO
-     * ========================================================
-     */
+        draw_ceiling();
 
-    SVECTOR ceiling_a =
-    {
-        -300,
-        -150,
-           0,
-        0
-    };
+        draw_left_wall();
 
-    SVECTOR ceiling_b =
-    {
-         300,
-        -150,
-           0,
-        0
-    };
+        draw_right_wall();
 
-    SVECTOR ceiling_c =
-    {
-         300,
-        -150,
-         500,
-        0
-    };
+        draw_back_wall();
 
-    SVECTOR ceiling_d =
-    {
-        -300,
-        -150,
-         500,
-        0
-    };
+        draw_window();
 
 
-    /*
-     * ========================================================
-     * PAREDE ESQUERDA
-     * ========================================================
-     */
+        /* Móveis */
 
-    SVECTOR left_a =
-    {
-        -300,
-         150,
-           0,
-        0
-    };
+        draw_bed();
 
-    SVECTOR left_b =
-    {
-        -300,
-         150,
-         500,
-        0
-    };
+        draw_table();
 
-    SVECTOR left_c =
-    {
-        -300,
-        -150,
-         500,
-        0
-    };
+        draw_box();
 
-    SVECTOR left_d =
-    {
-        -300,
-        -150,
-           0,
-        0
-    };
 
-
-    /*
-     * ========================================================
-     * PAREDE DIREITA
-     * ========================================================
-     */
-
-    SVECTOR right_a =
-    {
-         300,
-         150,
-         500,
-        0
-    };
-
-    SVECTOR right_b =
-    {
-         300,
-         150,
-           0,
-        0
-    };
-
-    SVECTOR right_c =
-    {
-         300,
-        -150,
-           0,
-        0
-    };
-
-    SVECTOR right_d =
-    {
-         300,
-        -150,
-         500,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * PAREDE DO FUNDO
-     *
-     * A parede será dividida para criar a janela.
-     * ========================================================
-     */
-
-
-    /*
-     * Parte inferior da parede
-     */
-
-    SVECTOR back_bottom_a =
-    {
-        -300,
-         150,
-         500,
-        0
-    };
-
-    SVECTOR back_bottom_b =
-    {
-         300,
-         150,
-         500,
-        0
-    };
-
-    SVECTOR back_bottom_c =
-    {
-         300,
-          50,
-         500,
-        0
-    };
-
-    SVECTOR back_bottom_d =
-    {
-        -300,
-          50,
-         500,
-        0
-    };
-
-
-    /*
-     * Parte superior
-     */
-
-    SVECTOR back_top_a =
-    {
-        -300,
-         -50,
-         500,
-        0
-    };
-
-    SVECTOR back_top_b =
-    {
-         300,
-         -50,
-         500,
-        0
-    };
-
-    SVECTOR back_top_c =
-    {
-         300,
-        -150,
-         500,
-        0
-    };
-
-    SVECTOR back_top_d =
-    {
-        -300,
-        -150,
-         500,
-        0
-    };
-
-
-    /*
-     * Lado esquerdo da janela
-     */
-
-    SVECTOR back_window_left_a =
-    {
-        -300,
-          50,
-         500,
-        0
-    };
-
-    SVECTOR back_window_left_b =
-    {
-        -100,
-          50,
-         500,
-        0
-    };
-
-    SVECTOR back_window_left_c =
-    {
-        -100,
-         -50,
-         500,
-        0
-    };
-
-    SVECTOR back_window_left_d =
-    {
-        -300,
-         -50,
-         500,
-        0
-    };
-
-
-    /*
-     * Lado direito da janela
-     */
-
-    SVECTOR back_window_right_a =
-    {
-         100,
-          50,
-         500,
-        0
-    };
-
-    SVECTOR back_window_right_b =
-    {
-         300,
-          50,
-         500,
-        0
-    };
-
-    SVECTOR back_window_right_c =
-    {
-         300,
-         -50,
-         500,
-        0
-    };
-
-    SVECTOR back_window_right_d =
-    {
-         100,
-         -50,
-         500,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * JANELA
-     *
-     * Colocada ligeiramente à frente da parede.
-     * ========================================================
-     */
-
-    SVECTOR window_a =
-    {
-        -100,
-          50,
-         495,
-        0
-    };
-
-    SVECTOR window_b =
-    {
-         100,
-          50,
-         495,
-        0
-    };
-
-    SVECTOR window_c =
-    {
-         100,
-         -50,
-         495,
-        0
-    };
-
-    SVECTOR window_d =
-    {
-        -100,
-         -50,
-         495,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * MOLDURA ESQUERDA
-     * ========================================================
-     */
-
-    SVECTOR frame_left_a =
-    {
-        -110,
-          60,
-         490,
-        0
-    };
-
-    SVECTOR frame_left_b =
-    {
-        -100,
-          60,
-         490,
-        0
-    };
-
-    SVECTOR frame_left_c =
-    {
-        -100,
-         -60,
-         490,
-        0
-    };
-
-    SVECTOR frame_left_d =
-    {
-        -110,
-         -60,
-         490,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * MOLDURA DIREITA
-     * ========================================================
-     */
-
-    SVECTOR frame_right_a =
-    {
-         100,
-          60,
-         490,
-        0
-    };
-
-    SVECTOR frame_right_b =
-    {
-         110,
-          60,
-         490,
-        0
-    };
-
-    SVECTOR frame_right_c =
-    {
-         110,
-         -60,
-         490,
-        0
-    };
-
-    SVECTOR frame_right_d =
-    {
-         100,
-         -60,
-         490,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * MOLDURA SUPERIOR
-     * ========================================================
-     */
-
-    SVECTOR frame_top_a =
-    {
-        -110,
-          60,
-         490,
-        0
-    };
-
-    SVECTOR frame_top_b =
-    {
-         110,
-          60,
-         490,
-        0
-    };
-
-    SVECTOR frame_top_c =
-    {
-         100,
-          50,
-         490,
-        0
-    };
-
-    SVECTOR frame_top_d =
-    {
-        -100,
-          50,
-         490,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * MOLDURA INFERIOR
-     * ========================================================
-     */
-
-    SVECTOR frame_bottom_a =
-    {
-        -110,
-         -60,
-         490,
-        0
-    };
-
-    SVECTOR frame_bottom_b =
-    {
-         110,
-         -60,
-         490,
-        0
-    };
-
-    SVECTOR frame_bottom_c =
-    {
-         100,
-         -50,
-         490,
-        0
-    };
-
-    SVECTOR frame_bottom_d =
-    {
-        -100,
-         -50,
-         490,
-        0
-    };
-
-
-    /*
-     * ========================================================
-     * INICIALIZAÇÃO
-     * ========================================================
- */
-
-    init_graphics();
-
-
-    /*
-     * ========================================================
-     * LOOP PRINCIPAL
-     * ========================================================
- */
-
-    while (1)
-    {
-        /*
-         * CÂMERA
-         */
-
-        set_camera(
-            &camera
-        );
-
-
-        /*
-         * ====================================================
-         * CHÃO
-         *
-         * Marrom/cinza
-         * ====================================================
- */
-
-        draw_quad(
-            &floor_a,
-            &floor_b,
-            &floor_c,
-            &floor_d,
-
-            75,
-            65,
-            55,
-
-            55,
-            48,
-            42
-        );
-
-
-        /*
-         * ====================================================
-         * TETO
-         * ====================================================
- */
-
-        draw_quad(
-            &ceiling_a,
-            &ceiling_b,
-            &ceiling_c,
-            &ceiling_d,
-
-            45,
-            45,
-            50,
-
-            30,
-            30,
-            35
-        );
-
-
-        /*
-         * ====================================================
-         * PAREDE ESQUERDA
-         * ====================================================
- */
-
-        draw_quad(
-            &left_a,
-            &left_b,
-            &left_c,
-            &left_d,
-
-            95,
-            90,
-            82,
-
-            70,
-            65,
-            60
-        );
-
-
-        /*
-         * ====================================================
-         * PAREDE DIREITA
-         * ====================================================
- */
-
-        draw_quad(
-            &right_a,
-            &right_b,
-            &right_c,
-            &right_d,
-
-            105,
-            100,
-            92,
-
-            75,
-            70,
-            65
-        );
-
-
-        /*
-         * ====================================================
-         * PAREDE DO FUNDO
-         *
-         * PARTE INFERIOR
-         * ====================================================
- */
-
-        draw_quad(
-            &back_bottom_a,
-            &back_bottom_b,
-            &back_bottom_c,
-            &back_bottom_d,
-
-            85,
-            80,
-            75,
-
-            65,
-            60,
-            55
-        );
-
-
-        /*
-         * ====================================================
-         * PAREDE DO FUNDO
-         *
-         * PARTE SUPERIOR
-         * ====================================================
- */
-
-        draw_quad(
-            &back_top_a,
-            &back_top_b,
-            &back_top_c,
-            &back_top_d,
-
-            85,
-            80,
-            75,
-
-            65,
-            60,
-            55
-        );
-
-
-        /*
-         * ====================================================
-         * PAREDE DO FUNDO
-         *
-         * LADO ESQUERDO DA JANELA
-         * ====================================================
- */
-
-        draw_quad(
-            &back_window_left_a,
-            &back_window_left_b,
-            &back_window_left_c,
-            &back_window_left_d,
-
-            85,
-            80,
-            75,
-
-            65,
-            60,
-            55
-        );
-
-
-        /*
-         * ====================================================
-         * PAREDE DO FUNDO
-         *
-         * LADO DIREITO DA JANELA
-         * ====================================================
- */
-
-        draw_quad(
-            &back_window_right_a,
-            &back_window_right_b,
-            &back_window_right_c,
-            &back_window_right_d,
-
-            85,
-            80,
-            75,
-
-            65,
-            60,
-            55
-        );
-
-
-        /*
-         * ====================================================
-         * VIDRO DA JANELA
-         * ====================================================
- */
-
-        draw_quad(
-            &window_a,
-            &window_b,
-            &window_c,
-            &window_d,
-
-            35,
-            70,
-            95,
-
-            20,
-            40,
-            65
-        );
-
-
-        /*
-         * ====================================================
-         * MOLDURA ESQUERDA
-         * ====================================================
- */
-
-        draw_quad(
-            &frame_left_a,
-            &frame_left_b,
-            &frame_left_c,
-            &frame_left_d,
-
-            35,
-            30,
-            28,
-
-            25,
-            22,
-            20
-        );
-
-
-        /*
-         * ====================================================
-         * MOLDURA DIREITA
-         * ====================================================
- */
-
-        draw_quad(
-            &frame_right_a,
-            &frame_right_b,
-            &frame_right_c,
-            &frame_right_d,
-
-            35,
-            30,
-            28,
-
-            25,
-            22,
-            20
-        );
-
-
-        /*
-         * ====================================================
-         * MOLDURA SUPERIOR
-         * ====================================================
- */
-
-        draw_quad(
-            &frame_top_a,
-            &frame_top_b,
-            &frame_top_c,
-            &frame_top_d,
-
-            35,
-            30,
-            28,
-
-            25,
-            22,
-            20
-        );
-
-
-        /*
-         * ====================================================
-         * MOLDURA INFERIOR
-         * ====================================================
- */
-
-        draw_quad(
-            &frame_bottom_a,
-            &frame_bottom_b,
-            &frame_bottom_c,
-            &frame_bottom_d,
-
-            35,
-            30,
-            28,
-
-            25,
-            22,
-            20
-        );
-
-
-        /*
-         * ====================================================
-         * MOSTRA FRAME
-         * ====================================================
- */
+        /* Próximo frame */
 
         display();
     }
-
 
     return 0;
 }
