@@ -18,6 +18,7 @@ typedef struct
 } RenderBuffer;
 
 RenderBuffer db[2];
+
 int db_active = 0;
 char *db_nextpri;
 
@@ -26,17 +27,6 @@ typedef struct
     SVECTOR rotation;
     VECTOR position;
 } Camera;
-
-typedef struct
-{
-    int x0;
-    int y0;
-    int z0;
-
-    int x1;
-    int y1;
-    int z1;
-} Box;
 
 void init_graphics(void)
 {
@@ -124,6 +114,7 @@ void init_graphics(void)
     SetDispMask(1);
 
     db_active = 0;
+
     db_nextpri = db[0].packet;
 }
 
@@ -281,64 +272,18 @@ void draw_box(
     int z1,
     uint8_t r,
     uint8_t g,
-    uint8_t b
+    uint8_t bcol
 )
 {
-    SVECTOR v000 =
-    {
-        x0,
-        y0,
-        z0
-    };
+    SVECTOR v000 = { x0, y0, z0 };
+    SVECTOR v100 = { x1, y0, z0 };
+    SVECTOR v110 = { x1, y1, z0 };
+    SVECTOR v010 = { x0, y1, z0 };
 
-    SVECTOR v100 =
-    {
-        x1,
-        y0,
-        z0
-    };
-
-    SVECTOR v110 =
-    {
-        x1,
-        y1,
-        z0
-    };
-
-    SVECTOR v010 =
-    {
-        x0,
-        y1,
-        z0
-    };
-
-    SVECTOR v001 =
-    {
-        x0,
-        y0,
-        z1
-    };
-
-    SVECTOR v101 =
-    {
-        x1,
-        y0,
-        z1
-    };
-
-    SVECTOR v111 =
-    {
-        x1,
-        y1,
-        z1
-    };
-
-    SVECTOR v011 =
-    {
-        x0,
-        y1,
-        z1
-    };
+    SVECTOR v001 = { x0, y0, z1 };
+    SVECTOR v101 = { x1, y0, z1 };
+    SVECTOR v111 = { x1, y1, z1 };
+    SVECTOR v011 = { x0, y1, z1 };
 
     draw_quad(
         &v000,
@@ -347,7 +292,7 @@ void draw_box(
         &v010,
         r,
         g,
-        b
+        bcol
     );
 
     draw_quad(
@@ -357,7 +302,7 @@ void draw_box(
         &v111,
         r,
         g,
-        b
+        bcol
     );
 
     draw_quad(
@@ -367,7 +312,7 @@ void draw_box(
         &v011,
         r,
         g,
-        b
+        bcol
     );
 
     draw_quad(
@@ -377,7 +322,7 @@ void draw_box(
         &v110,
         r,
         g,
-        b
+        bcol
     );
 
     draw_quad(
@@ -387,7 +332,7 @@ void draw_box(
         &v011,
         r,
         g,
-        b
+        bcol
     );
 
     draw_quad(
@@ -397,33 +342,359 @@ void draw_box(
         &v000,
         r,
         g,
-        b
+        bcol
     );
 }
 
-void draw_wall_quad(
-    SVECTOR *a,
-    SVECTOR *b,
-    SVECTOR *c,
-    SVECTOR *d,
-    uint8_t r,
-    uint8_t g,
-    uint8_t b
-)
+void draw_room(void)
 {
-    draw_quad(
-        a,
-        b,
-        c,
-        d,
-        r,
-        g,
-        b
-    );
-}
+    const int LEFT = -300;
+    const int RIGHT = 300;
 
-void draw_rug(void)
-{
+    const int FRONT = 0;
+    const int BACK = 500;
+
+    const int FLOOR = 120;
+    const int CEILING = -120;
+
+    const int WINDOW_LEFT = -100;
+    const int WINDOW_RIGHT = 100;
+
+    const int WINDOW_TOP = -50;
+    const int WINDOW_BOTTOM = 50;
+
+    const int DOOR_FRONT = 80;
+    const int DOOR_BACK = 230;
+
+    const int DOOR_TOP = -75;
+    const int DOOR_BOTTOM = 120;
+
+    SVECTOR floor_a = { LEFT, FLOOR, FRONT };
+    SVECTOR floor_b = { RIGHT, FLOOR, FRONT };
+    SVECTOR floor_c = { RIGHT, FLOOR, BACK };
+    SVECTOR floor_d = { LEFT, FLOOR, BACK };
+
+    SVECTOR ceiling_a = { LEFT, CEILING, FRONT };
+    SVECTOR ceiling_b = { RIGHT, CEILING, FRONT };
+    SVECTOR ceiling_c = { RIGHT, CEILING, BACK };
+    SVECTOR ceiling_d = { LEFT, CEILING, BACK };
+
+    SVECTOR right_a = { RIGHT, CEILING, BACK };
+    SVECTOR right_b = { RIGHT, CEILING, FRONT };
+    SVECTOR right_c = { RIGHT, FLOOR, FRONT };
+    SVECTOR right_d = { RIGHT, FLOOR, BACK };
+
+    SVECTOR left_front_a = { LEFT, CEILING, FRONT };
+    SVECTOR left_front_b = { LEFT, CEILING, DOOR_FRONT };
+    SVECTOR left_front_c = { LEFT, FLOOR, DOOR_FRONT };
+    SVECTOR left_front_d = { LEFT, FLOOR, FRONT };
+
+    SVECTOR left_top_a = { LEFT, CEILING, DOOR_FRONT };
+    SVECTOR left_top_b = { LEFT, CEILING, DOOR_BACK };
+    SVECTOR left_top_c = { LEFT, DOOR_TOP, DOOR_BACK };
+    SVECTOR left_top_d = { LEFT, DOOR_TOP, DOOR_FRONT };
+
+    SVECTOR left_back_a = { LEFT, CEILING, DOOR_BACK };
+    SVECTOR left_back_b = { LEFT, CEILING, BACK };
+    SVECTOR left_back_c = { LEFT, FLOOR, BACK };
+    SVECTOR left_back_d = { LEFT, FLOOR, DOOR_BACK };
+
+    SVECTOR back_top_a = { LEFT, CEILING, BACK };
+    SVECTOR back_top_b = { RIGHT, CEILING, BACK };
+    SVECTOR back_top_c = { RIGHT, WINDOW_TOP, BACK };
+    SVECTOR back_top_d = { LEFT, WINDOW_TOP, BACK };
+
+    SVECTOR back_bottom_a = { LEFT, WINDOW_BOTTOM, BACK };
+    SVECTOR back_bottom_b = { RIGHT, WINDOW_BOTTOM, BACK };
+    SVECTOR back_bottom_c = { RIGHT, FLOOR, BACK };
+    SVECTOR back_bottom_d = { LEFT, FLOOR, BACK };
+
+    SVECTOR back_left_a = { LEFT, WINDOW_TOP, BACK };
+    SVECTOR back_left_b = { WINDOW_LEFT, WINDOW_TOP, BACK };
+    SVECTOR back_left_c = { WINDOW_LEFT, WINDOW_BOTTOM, BACK };
+    SVECTOR back_left_d = { LEFT, WINDOW_BOTTOM, BACK };
+
+    SVECTOR back_right_a = { WINDOW_RIGHT, WINDOW_TOP, BACK };
+    SVECTOR back_right_b = { RIGHT, WINDOW_TOP, BACK };
+    SVECTOR back_right_c = { RIGHT, WINDOW_BOTTOM, BACK };
+    SVECTOR back_right_d = { WINDOW_RIGHT, WINDOW_BOTTOM, BACK };
+
+    SVECTOR window_a = {
+        WINDOW_LEFT,
+        WINDOW_TOP,
+        BACK - 5
+    };
+
+    SVECTOR window_b = {
+        WINDOW_RIGHT,
+        WINDOW_TOP,
+        BACK - 5
+    };
+
+    SVECTOR window_c = {
+        WINDOW_RIGHT,
+        WINDOW_BOTTOM,
+        BACK - 5
+    };
+
+    SVECTOR window_d = {
+        WINDOW_LEFT,
+        WINDOW_BOTTOM,
+        BACK - 5
+    };
+
+    SVECTOR door_a = {
+        LEFT + 4,
+        DOOR_TOP,
+        DOOR_FRONT
+    };
+
+    SVECTOR door_b = {
+        LEFT + 4,
+        DOOR_TOP,
+        DOOR_BACK
+    };
+
+    SVECTOR door_c = {
+        LEFT + 4,
+        DOOR_BOTTOM,
+        DOOR_BACK
+    };
+
+    SVECTOR door_d = {
+        LEFT + 4,
+        DOOR_BOTTOM,
+        DOOR_FRONT
+    };
+
+    draw_quad(
+        &floor_a,
+        &floor_b,
+        &floor_c,
+        &floor_d,
+        58,
+        55,
+        50
+    );
+
+    draw_quad(
+        &ceiling_a,
+        &ceiling_b,
+        &ceiling_c,
+        &ceiling_d,
+        34,
+        34,
+        38
+    );
+
+    draw_quad(
+        &right_a,
+        &right_b,
+        &right_c,
+        &right_d,
+        72,
+        66,
+        60
+    );
+
+    draw_quad(
+        &left_front_a,
+        &left_front_b,
+        &left_front_c,
+        &left_front_d,
+        68,
+        62,
+        57
+    );
+
+    draw_quad(
+        &left_top_a,
+        &left_top_b,
+        &left_top_c,
+        &left_top_d,
+        68,
+        62,
+        57
+    );
+
+    draw_quad(
+        &left_back_a,
+        &left_back_b,
+        &left_back_c,
+        &left_back_d,
+        68,
+        62,
+        57
+    );
+
+    draw_quad(
+        &back_top_a,
+        &back_top_b,
+        &back_top_c,
+        &back_top_d,
+        70,
+        65,
+        59
+    );
+
+    draw_quad(
+        &back_bottom_a,
+        &back_bottom_b,
+        &back_bottom_c,
+        &back_bottom_d,
+        70,
+        65,
+        59
+    );
+
+    draw_quad(
+        &back_left_a,
+        &back_left_b,
+        &back_left_c,
+        &back_left_d,
+        70,
+        65,
+        59
+    );
+
+    draw_quad(
+        &back_right_a,
+        &back_right_b,
+        &back_right_c,
+        &back_right_d,
+        70,
+        65,
+        59
+    );
+
+    draw_quad(
+        &window_a,
+        &window_b,
+        &window_c,
+        &window_d,
+        25,
+        55,
+        82
+    );
+
+    draw_box(
+        -115,
+        -62,
+        BACK - 12,
+        115,
+        -50,
+        BACK + 2,
+        92,
+        65,
+        38
+    );
+
+    draw_box(
+        -115,
+        50,
+        BACK - 12,
+        115,
+        62,
+        BACK + 2,
+        92,
+        65,
+        38
+    );
+
+    draw_box(
+        -112,
+        -62,
+        BACK - 12,
+        -100,
+        62,
+        BACK + 2,
+        92,
+        65,
+        38
+    );
+
+    draw_box(
+        100,
+        -62,
+        BACK - 12,
+        112,
+        62,
+        BACK + 2,
+        92,
+        65,
+        38
+    );
+
+    draw_box(
+        -6,
+        -50,
+        BACK - 12,
+        6,
+        50,
+        BACK + 2,
+        92,
+        65,
+        38
+    );
+
+    draw_quad(
+        &door_a,
+        &door_b,
+        &door_c,
+        &door_d,
+        78,
+        48,
+        30
+    );
+
+    draw_box(
+        LEFT + 2,
+        DOOR_TOP - 10,
+        DOOR_FRONT - 10,
+        LEFT + 14,
+        DOOR_BOTTOM + 10,
+        DOOR_FRONT,
+        100,
+        68,
+        38
+    );
+
+    draw_box(
+        LEFT + 2,
+        DOOR_TOP - 10,
+        DOOR_BACK,
+        LEFT + 14,
+        DOOR_BOTTOM + 10,
+        DOOR_BACK + 10,
+        100,
+        68,
+        38
+    );
+
+    draw_box(
+        LEFT + 2,
+        DOOR_TOP - 10,
+        DOOR_FRONT - 10,
+        LEFT + 14,
+        DOOR_TOP,
+        DOOR_BACK + 10,
+        108,
+        74,
+        40
+    );
+
+    draw_box(
+        LEFT + 5,
+        8,
+        140,
+        LEFT + 13,
+        32,
+        165,
+        120,
+        88,
+        48
+    );
+
     draw_box(
         -180,
         118,
@@ -447,148 +718,7 @@ void draw_rug(void)
         55,
         42
     );
-}
 
-void draw_sofa(void)
-{
-    draw_box(
-        40,
-        55,
-        330,
-        250,
-        120,
-        410,
-        70,
-        48,
-        38
-    );
-
-    draw_box(
-        40,
-        0,
-        350,
-        250,
-        60,
-        405,
-        75,
-        52,
-        40
-    );
-
-    draw_box(
-        50,
-        5,
-        340,
-        90,
-        125,
-        400,
-        82,
-        56,
-        42
-    );
-
-    draw_box(
-        200,
-        5,
-        240,
-        125,
-        125,
-        400,
-        82,
-        56,
-        42
-    );
-
-    draw_box(
-        65,
-        115,
-        225,
-        235,
-        155,
-        395,
-        78,
-        54,
-        42
-    );
-
-    draw_box(
-        55,
-        115,
-        225,
-        235,
-        145,
-        390,
-        65,
-        45,
-        36
-    );
-
-    draw_box(
-        55,
-        120,
-        345,
-        75,
-        165,
-        395,
-        90,
-        65,
-        48
-    );
-}
-
-void draw_coffee_table(void)
-{
-    draw_box(
-        -80,
-        72,
-        270,
-        70,
-        88,
-        360,
-        70,
-        45,
-        30
-    );
-
-    draw_box(
-        -70,
-        88,
-        280,
-        60,
-        100,
-        350,
-        90,
-        58,
-        38
-    );
-
-    draw_box(
-        -65,
-        100,
-        285,
-        -50,
-        120,
-        300,
-        55,
-        38,
-        27
-    );
-
-    draw_box(
-        45,
-        100,
-        285,
-        60,
-        120,
-        300,
-        55,
-        38,
-        27
-    );
-}
-
-void draw_tv_unit(void)
-{
     draw_box(
         -250,
         65,
@@ -624,10 +754,7 @@ void draw_tv_unit(void)
         34,
         27
     );
-}
 
-void draw_tv(void)
-{
     draw_box(
         -205,
         -55,
@@ -675,10 +802,139 @@ void draw_tv(void)
         50,
         60
     );
-}
 
-void draw_side_table(void)
-{
+    draw_box(
+        40,
+        55,
+        330,
+        250,
+        120,
+        410,
+        70,
+        48,
+        38
+    );
+
+    draw_box(
+        40,
+        0,
+        350,
+        250,
+        60,
+        405,
+        75,
+        52,
+        40
+    );
+
+    draw_box(
+        50,
+        5,
+        340,
+        90,
+        125,
+        400,
+        82,
+        56,
+        42
+    );
+
+    draw_box(
+        200,
+        5,
+        240,
+        250,
+        125,
+        400,
+        82,
+        56,
+        42
+    );
+
+    draw_box(
+        65,
+        115,
+        225,
+        235,
+        155,
+        395,
+        78,
+        54,
+        42
+    );
+
+    draw_box(
+        55,
+        115,
+        225,
+        235,
+        145,
+        390,
+        65,
+        45,
+        36
+    );
+
+    draw_box(
+        55,
+        120,
+        345,
+        75,
+        165,
+        395,
+        90,
+        65,
+        48
+    );
+
+    draw_box(
+        -80,
+        72,
+        270,
+        70,
+        88,
+        360,
+        70,
+        45,
+        30
+    );
+
+    draw_box(
+        -70,
+        88,
+        280,
+        60,
+        100,
+        350,
+        90,
+        58,
+        38
+    );
+
+    draw_box(
+        -65,
+        100,
+        285,
+        -50,
+        120,
+        300,
+        55,
+        38,
+        27
+    );
+
+    draw_box(
+        45,
+        100,
+        285,
+        60,
+        120,
+        300,
+        55,
+        38,
+        27
+    );
+
     draw_box(
         220,
         65,
@@ -714,10 +970,7 @@ void draw_side_table(void)
         38,
         28
     );
-}
 
-void draw_lamp(void)
-{
     draw_box(
         242,
         115,
@@ -753,10 +1006,7 @@ void draw_lamp(void)
         50,
         30
     );
-}
 
-void draw_plant(void)
-{
     draw_box(
         -270,
         80,
@@ -816,10 +1066,7 @@ void draw_plant(void)
         75,
         40
     );
-}
 
-void draw_picture(void)
-{
     draw_box(
         -40,
         -55,
@@ -855,10 +1102,7 @@ void draw_picture(void)
         50,
         35
     );
-}
 
-void draw_curtains(void)
-{
     draw_box(
         -125,
         -55,
@@ -894,571 +1138,6 @@ void draw_curtains(void)
         58,
         42
     );
-}
-
-void draw_room(void)
-{
-    const int ROOM_LEFT = -300;
-    const int ROOM_RIGHT = 300;
-    const int ROOM_FRONT = 0;
-    const int ROOM_BACK = 500;
-
-    const int FLOOR_Y = 120;
-    const int CEIL_Y = -120;
-
-    const int WINDOW_LEFT = -100;
-    const int WINDOW_RIGHT = 100;
-    const int WINDOW_TOP = -50;
-    const int WINDOW_BOTTOM = 50;
-
-    const int DOOR_FRONT = 80;
-    const int DOOR_BACK = 230;
-    const int DOOR_TOP = -75;
-    const int DOOR_BOTTOM = 120;
-
-    SVECTOR floor_a =
-    {
-        ROOM_LEFT,
-        FLOOR_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR floor_b =
-    {
-        ROOM_RIGHT,
-        FLOOR_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR floor_c =
-    {
-        ROOM_RIGHT,
-        FLOOR_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR floor_d =
-    {
-        ROOM_LEFT,
-        FLOOR_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR ceiling_a =
-    {
-        ROOM_LEFT,
-        CEIL_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR ceiling_b =
-    {
-        ROOM_RIGHT,
-        CEIL_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR ceiling_c =
-    {
-        ROOM_RIGHT,
-        CEIL_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR ceiling_d =
-    {
-        ROOM_LEFT,
-        CEIL_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR right_a =
-    {
-        ROOM_RIGHT,
-        CEIL_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR right_b =
-    {
-        ROOM_RIGHT,
-        CEIL_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR right_c =
-    {
-        ROOM_RIGHT,
-        FLOOR_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR right_d =
-    {
-        ROOM_RIGHT,
-        FLOOR_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR left_a =
-    {
-        ROOM_LEFT,
-        CEIL_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR left_b =
-    {
-        ROOM_LEFT,
-        CEIL_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR left_c =
-    {
-        ROOM_LEFT,
-        FLOOR_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR left_d =
-    {
-        ROOM_LEFT,
-        FLOOR_Y,
-        ROOM_FRONT
-    };
-
-    SVECTOR back_top_a =
-    {
-        ROOM_LEFT,
-        CEIL_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR back_top_b =
-    {
-        ROOM_RIGHT,
-        CEIL_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR back_top_c =
-    {
-        ROOM_RIGHT,
-        WINDOW_TOP,
-        ROOM_BACK
-    };
-
-    SVECTOR back_top_d =
-    {
-        ROOM_LEFT,
-        WINDOW_TOP,
-        ROOM_BACK
-    };
-
-    SVECTOR back_bottom_a =
-    {
-        ROOM_LEFT,
-        WINDOW_BOTTOM,
-        ROOM_BACK
-    };
-
-    SVECTOR back_bottom_b =
-    {
-        ROOM_RIGHT,
-        WINDOW_BOTTOM,
-        ROOM_BACK
-    };
-
-    SVECTOR back_bottom_c =
-    {
-        ROOM_RIGHT,
-        FLOOR_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR back_bottom_d =
-    {
-        ROOM_LEFT,
-        FLOOR_Y,
-        ROOM_BACK
-    };
-
-    SVECTOR back_left_a =
-    {
-        ROOM_LEFT,
-        WINDOW_TOP,
-        ROOM_BACK
-    };
-
-    SVECTOR back_left_b =
-    {
-        WINDOW_LEFT,
-        WINDOW_TOP,
-        ROOM_BACK
-    };
-
-    SVECTOR back_left_c =
-    {
-        WINDOW_LEFT,
-        WINDOW_BOTTOM,
-        ROOM_BACK
-    };
-
-    SVECTOR back_left_d =
-    {
-        ROOM_LEFT,
-        WINDOW_BOTTOM,
-        ROOM_BACK
-    };
-
-    SVECTOR back_right_a =
-    {
-        WINDOW_RIGHT,
-        WINDOW_TOP,
-        ROOM_BACK
-    };
-
-    SVECTOR back_right_b =
-    {
-        ROOM_RIGHT,
-        WINDOW_TOP,
-        ROOM_BACK
-    };
-
-    SVECTOR back_right_c =
-    {
-        ROOM_RIGHT,
-        WINDOW_BOTTOM,
-        ROOM_BACK
-    };
-
-    SVECTOR back_right_d =
-    {
-        WINDOW_RIGHT,
-        WINDOW_BOTTOM,
-        ROOM_BACK
-    };
-
-    SVECTOR window_a =
-    {
-        WINDOW_LEFT,
-        WINDOW_TOP,
-        ROOM_BACK - 5
-    };
-
-    SVECTOR window_b =
-    {
-        WINDOW_RIGHT,
-        WINDOW_TOP,
-        ROOM_BACK - 5
-    };
-
-    SVECTOR window_c =
-    {
-        WINDOW_RIGHT,
-        WINDOW_BOTTOM,
-        ROOM_BACK - 5
-    };
-
-    SVECTOR window_d =
-    {
-        WINDOW_LEFT,
-        WINDOW_BOTTOM,
-        ROOM_BACK - 5
-    };
-
-    SVECTOR door_a =
-    {
-        ROOM_LEFT + 4,
-        DOOR_TOP,
-        DOOR_FRONT
-    };
-
-    SVECTOR door_b =
-    {
-        ROOM_LEFT + 4,
-        DOOR_TOP,
-        DOOR_BACK
-    };
-
-    SVECTOR door_c =
-    {
-        ROOM_LEFT + 4,
-        DOOR_BOTTOM,
-        DOOR_BACK
-    };
-
-    SVECTOR door_d =
-    {
-        ROOM_LEFT + 4,
-        DOOR_BOTTOM,
-        DOOR_FRONT
-    };
-
-    draw_quad(
-        &floor_a,
-        &floor_b,
-        &floor_c,
-        &floor_d,
-        58,
-        55,
-        50
-    );
-
-    draw_quad(
-        &ceiling_a,
-        &ceiling_b,
-        &ceiling_c,
-        &ceiling_d,
-        34,
-        34,
-        38
-    );
-
-    draw_quad(
-        &right_a,
-        &right_b,
-        &right_c,
-        &right_d,
-        72,
-        66,
-        60
-    );
-
-    draw_quad(
-        &left_a,
-        &left_b,
-        &left_c,
-        &left_d,
-        68,
-        62,
-        57
-    );
-
-    draw_quad(
-        &back_top_a,
-        &back_top_b,
-        &back_top_c,
-        &back_top_d,
-        70,
-        65,
-        59
-    );
-
-    draw_quad(
-        &back_bottom_a,
-        &back_bottom_b,
-        &back_bottom_c,
-        &back_bottom_d,
-        70,
-        65,
-        59
-    );
-
-    draw_quad(
-        &back_left_a,
-        &back_left_b,
-        &back_left_c,
-        &back_left_d,
-        70,
-        65,
-        59
-    );
-
-    draw_quad(
-        &back_right_a,
-        &back_right_b,
-        &back_right_c,
-        &back_right_d,
-        70,
-        65,
-        59
-    );
-
-    draw_box(
-        -300,
-        105,
-        0,
-        300,
-        120,
-        500,
-        82,
-        63,
-        45
-    );
-
-    draw_box(
-        -300,
-        105,
-        490,
-        300,
-        120,
-        500,
-        82,
-        63,
-        45
-    );
-
-    draw_quad(
-        &window_a,
-        &window_b,
-        &window_c,
-        &window_d,
-        25,
-        55,
-        82
-    );
-
-    draw_box(
-        -115,
-        -62,
-        490,
-        115,
-        -50,
-        502,
-        92,
-        65,
-        38
-    );
-
-    draw_box(
-        -115,
-        50,
-        490,
-        115,
-        62,
-        502,
-        92,
-        65,
-        38
-    );
-
-    draw_box(
-        -112,
-        -62,
-        490,
-        -100,
-        62,
-        502,
-        92,
-        65,
-        38
-    );
-
-    draw_box(
-        100,
-        -62,
-        490,
-        112,
-        62,
-        502,
-        92,
-        65,
-        38
-    );
-
-    draw_box(
-        -6,
-        -50,
-        490,
-        6,
-        50,
-        502,
-        92,
-        65,
-        38
-    );
-
-    draw_box(
-        -305,
-        DOOR_TOP - 10,
-        DOOR_FRONT - 10,
-        -294,
-        DOOR_BOTTOM + 10,
-        DOOR_FRONT,
-        95,
-        65,
-        38
-    );
-
-    draw_box(
-        -305,
-        DOOR_TOP - 10,
-        DOOR_BACK,
-        -294,
-        DOOR_BOTTOM + 10,
-        DOOR_BACK + 10,
-        95,
-        65,
-        38
-    );
-
-    draw_box(
-        -305,
-        DOOR_TOP - 10,
-        DOOR_FRONT - 10,
-        -294,
-        DOOR_TOP,
-        DOOR_BACK + 10,
-        105,
-        72,
-        40
-    );
-
-    draw_quad(
-        &door_a,
-        &door_b,
-        &door_c,
-        &door_d,
-        78,
-        48,
-        30
-    );
-
-    draw_box(
-        -298,
-        10,
-        145,
-        -292,
-        30,
-        165,
-        120,
-        88,
-        48
-    );
-
-    draw_box(
-        -297,
-        15,
-        150,
-        -290,
-        24,
-        158,
-        35,
-        25,
-        18
-    );
-
-    draw_rug();
-
-    draw_tv_unit();
-
-    draw_tv();
-
-    draw_sofa();
-
-    draw_coffee_table();
-
-    draw_side_table();
-
-    draw_lamp();
-
-    draw_plant();
-
-    draw_picture();
-
-    draw_curtains();
 }
 
 int main(void)
