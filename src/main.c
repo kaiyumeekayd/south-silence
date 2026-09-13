@@ -7,7 +7,12 @@
 #define SCREEN_YRES 240
 
 #define OT_LEN 256
-#define PACKET_LEN 8192
+#define PACKET_LEN 16384
+
+
+/* =========================================================
+   RENDER BUFFER
+   ========================================================= */
 
 typedef struct
 {
@@ -28,9 +33,9 @@ int db_active = 0;
 char *db_nextpri;
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    CÂMERA
-   --------------------------------------------------------- */
+   ========================================================= */
 
 typedef struct
 {
@@ -40,48 +45,84 @@ typedef struct
 } Camera;
 
 
-/* ---------------------------------------------------------
-   INICIALIZAÇÃO GRÁFICA
-   --------------------------------------------------------- */
+/* =========================================================
+   INICIALIZAÇÃO
+   ========================================================= */
 
 void init_graphics(void)
 {
     ResetGraph(0);
 
-    /* Buffer 0 */
 
-    SetDefDispEnv(&db[0].disp, 0, 0,
-                  SCREEN_XRES, SCREEN_YRES);
+    /* BUFFER 0 */
 
-    SetDefDrawEnv(&db[0].draw, SCREEN_XRES, 0,
-                  SCREEN_XRES, SCREEN_YRES);
+    SetDefDispEnv(
+        &db[0].disp,
+        0,
+        0,
+        SCREEN_XRES,
+        SCREEN_YRES
+    );
+
+    SetDefDrawEnv(
+        &db[0].draw,
+        SCREEN_XRES,
+        0,
+        SCREEN_XRES,
+        SCREEN_YRES
+    );
 
     db[0].draw.isbg = 1;
 
-    setRGB0(&db[0].draw, 8, 8, 12);
+    setRGB0(
+        &db[0].draw,
+        8,
+        8,
+        12
+    );
 
 
-    /* Buffer 1 */
+    /* BUFFER 1 */
 
-    SetDefDispEnv(&db[1].disp,
-                  SCREEN_XRES, 0,
-                  SCREEN_XRES, SCREEN_YRES);
+    SetDefDispEnv(
+        &db[1].disp,
+        SCREEN_XRES,
+        0,
+        SCREEN_XRES,
+        SCREEN_YRES
+    );
 
-    SetDefDrawEnv(&db[1].draw,
-                  0, 0,
-                  SCREEN_XRES, SCREEN_YRES);
+    SetDefDrawEnv(
+        &db[1].draw,
+        0,
+        0,
+        SCREEN_XRES,
+        SCREEN_YRES
+    );
 
     db[1].draw.isbg = 1;
 
-    setRGB0(&db[1].draw, 8, 8, 12);
+    setRGB0(
+        &db[1].draw,
+        8,
+        8,
+        12
+    );
 
 
-    ClearOTagR(db[0].ot, OT_LEN);
+    ClearOTagR(
+        db[0].ot,
+        OT_LEN
+    );
 
-    ClearOTagR(db[1].ot, OT_LEN);
+    ClearOTagR(
+        db[1].ot,
+        OT_LEN
+    );
 
 
     InitGeom();
+
 
     gte_SetGeomOffset(
         SCREEN_XRES / 2,
@@ -93,8 +134,13 @@ void init_graphics(void)
     );
 
 
-    PutDrawEnv(&db[0].draw);
-    PutDispEnv(&db[0].disp);
+    PutDrawEnv(
+        &db[0].draw
+    );
+
+    PutDispEnv(
+        &db[0].disp
+    );
 
     SetDispMask(1);
 
@@ -102,9 +148,9 @@ void init_graphics(void)
 }
 
 
-/* ---------------------------------------------------------
-   TROCA DE BUFFER
-   --------------------------------------------------------- */
+/* =========================================================
+   DISPLAY
+   ========================================================= */
 
 void display(void)
 {
@@ -114,15 +160,25 @@ void display(void)
 
     db_active ^= 1;
 
-    PutDrawEnv(&db[db_active].draw);
-    PutDispEnv(&db[db_active].disp);
+
+    PutDrawEnv(
+        &db[db_active].draw
+    );
+
+    PutDispEnv(
+        &db[db_active].disp
+    );
+
 
     ClearOTagR(
         db[db_active].ot,
         OT_LEN
     );
 
-    db_nextpri = db[db_active].packet;
+
+    db_nextpri =
+        db[db_active].packet;
+
 
     DrawOTag(
         db[db_active ^ 1].ot + OT_LEN - 1
@@ -130,13 +186,14 @@ void display(void)
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    CÂMERA
-   --------------------------------------------------------- */
+   ========================================================= */
 
 void set_camera(Camera *camera)
 {
     MATRIX matrix;
+
 
     RotMatrix(
         &camera->rotation,
@@ -148,15 +205,20 @@ void set_camera(Camera *camera)
         &camera->position
     );
 
-    gte_SetRotMatrix(&matrix);
 
-    gte_SetTransMatrix(&matrix);
+    gte_SetRotMatrix(
+        &matrix
+    );
+
+    gte_SetTransMatrix(
+        &matrix
+    );
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    TRIÂNGULO
-   --------------------------------------------------------- */
+   ========================================================= */
 
 void draw_triangle(
     SVECTOR *a,
@@ -164,7 +226,7 @@ void draw_triangle(
     SVECTOR *c,
     uint8_t r,
     uint8_t g,
-    uint8_t bl
+    uint8_t bcol
 )
 {
     POLY_F3 *poly;
@@ -172,7 +234,9 @@ void draw_triangle(
     int depth;
 
 
-    poly = (POLY_F3 *)db_nextpri;
+    poly =
+        (POLY_F3 *)db_nextpri;
+
 
     setPolyF3(poly);
 
@@ -180,7 +244,7 @@ void draw_triangle(
         poly,
         r,
         g,
-        bl
+        bcol
     );
 
 
@@ -210,6 +274,7 @@ void draw_triangle(
 
     gte_stotz(&depth);
 
+
     depth >>= 8;
 
 
@@ -226,13 +291,14 @@ void draw_triangle(
     );
 
 
-    db_nextpri += sizeof(POLY_F3);
+    db_nextpri +=
+        sizeof(POLY_F3);
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    QUADRILÁTERO
-   --------------------------------------------------------- */
+   ========================================================= */
 
 void draw_quad(
     SVECTOR *a,
@@ -241,7 +307,7 @@ void draw_quad(
     SVECTOR *d,
     uint8_t r,
     uint8_t g,
-    uint8_t bl
+    uint8_t bcol
 )
 {
     draw_triangle(
@@ -250,8 +316,9 @@ void draw_quad(
         c,
         r,
         g,
-        bl
+        bcol
     );
+
 
     draw_triangle(
         a,
@@ -259,25 +326,26 @@ void draw_quad(
         d,
         r,
         g,
-        bl
+        bcol
     );
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    MAIN
-   --------------------------------------------------------- */
+   ========================================================= */
 
 int main(void)
 {
+    /*
+     * NÃO MEXEMOS NA CÂMERA.
+     *
+     * Esta é a configuração que acabamos
+     * de validar.
+     */
+
     Camera camera =
     {
-        /*
-         * Esta é a rotação que já havia
-         * demonstrado o piso corretamente.
-         *
-         * 256 = 22,5 graus aproximadamente.
-         */
         {
             256,
             0,
@@ -285,10 +353,6 @@ int main(void)
             0
         },
 
-        /*
-         * Mantemos os objetos à frente
-         * do ponto de projeção.
-         */
         {
             0,
             0,
@@ -297,97 +361,195 @@ int main(void)
     };
 
 
-    /*
-     * PISO
-     *
-     * Grande retângulo horizontal.
-     */
+    /* =====================================================
+       DIMENSÕES DA SALA
+       ===================================================== */
 
-    SVECTOR floor_a = {
-        -300,
-        120,
-        0
+    const int ROOM_LEFT  = -300;
+    const int ROOM_RIGHT =  300;
+
+    const int ROOM_FRONT = 0;
+    const int ROOM_BACK  = 500;
+
+    const int FLOOR_Y = 120;
+    const int CEIL_Y  = -120;
+
+
+    /* =====================================================
+       PISO
+       ===================================================== */
+
+    SVECTOR floor_a =
+    {
+        ROOM_LEFT,
+        FLOOR_Y,
+        ROOM_FRONT
     };
 
-    SVECTOR floor_b = {
-         300,
-        120,
-        0
+    SVECTOR floor_b =
+    {
+        ROOM_RIGHT,
+        FLOOR_Y,
+        ROOM_FRONT
     };
 
-    SVECTOR floor_c = {
-         300,
-        120,
-        500
+    SVECTOR floor_c =
+    {
+        ROOM_RIGHT,
+        FLOOR_Y,
+        ROOM_BACK
     };
 
-    SVECTOR floor_d = {
-        -300,
-        120,
-        500
-    };
-
-
-    /*
-     * PAREDE DO FUNDO
-     */
-
-    SVECTOR back_a = {
-        -300,
-        -120,
-        500
-    };
-
-    SVECTOR back_b = {
-         300,
-        -120,
-        500
-    };
-
-    SVECTOR back_c = {
-         300,
-         120,
-         500
-    };
-
-    SVECTOR back_d = {
-        -300,
-         120,
-         500
+    SVECTOR floor_d =
+    {
+        ROOM_LEFT,
+        FLOOR_Y,
+        ROOM_BACK
     };
 
 
-    /*
-     * PAREDE LATERAL ESQUERDA
-     */
+    /* =====================================================
+       TETO
+       ===================================================== */
 
-    SVECTOR side_a = {
-        -300,
-        -120,
-        0
+    SVECTOR ceiling_a =
+    {
+        ROOM_LEFT,
+        CEIL_Y,
+        ROOM_FRONT
     };
 
-    SVECTOR side_b = {
-        -300,
-        -120,
-        500
+    SVECTOR ceiling_b =
+    {
+        ROOM_RIGHT,
+        CEIL_Y,
+        ROOM_FRONT
     };
 
-    SVECTOR side_c = {
-        -300,
-         120,
-         500
+    SVECTOR ceiling_c =
+    {
+        ROOM_RIGHT,
+        CEIL_Y,
+        ROOM_BACK
     };
 
-    SVECTOR side_d = {
-        -300,
-         120,
-         0
+    SVECTOR ceiling_d =
+    {
+        ROOM_LEFT,
+        CEIL_Y,
+        ROOM_BACK
     };
 
+
+    /* =====================================================
+       PAREDE DO FUNDO
+       ===================================================== */
+
+    SVECTOR back_a =
+    {
+        ROOM_LEFT,
+        CEIL_Y,
+        ROOM_BACK
+    };
+
+    SVECTOR back_b =
+    {
+        ROOM_RIGHT,
+        CEIL_Y,
+        ROOM_BACK
+    };
+
+    SVECTOR back_c =
+    {
+        ROOM_RIGHT,
+        FLOOR_Y,
+        ROOM_BACK
+    };
+
+    SVECTOR back_d =
+    {
+        ROOM_LEFT,
+        FLOOR_Y,
+        ROOM_BACK
+    };
+
+
+    /* =====================================================
+       PAREDE ESQUERDA
+       ===================================================== */
+
+    SVECTOR left_a =
+    {
+        ROOM_LEFT,
+        CEIL_Y,
+        ROOM_FRONT
+    };
+
+    SVECTOR left_b =
+    {
+        ROOM_LEFT,
+        CEIL_Y,
+        ROOM_BACK
+    };
+
+    SVECTOR left_c =
+    {
+        ROOM_LEFT,
+        FLOOR_Y,
+        ROOM_BACK
+    };
+
+    SVECTOR left_d =
+    {
+        ROOM_LEFT,
+        FLOOR_Y,
+        ROOM_FRONT
+    };
+
+
+    /* =====================================================
+       PAREDE DIREITA
+       ===================================================== */
+
+    SVECTOR right_a =
+    {
+        ROOM_RIGHT,
+        CEIL_Y,
+        ROOM_BACK
+    };
+
+    SVECTOR right_b =
+    {
+        ROOM_RIGHT,
+        CEIL_Y,
+        ROOM_FRONT
+    };
+
+    SVECTOR right_c =
+    {
+        ROOM_RIGHT,
+        FLOOR_Y,
+        ROOM_FRONT
+    };
+
+    SVECTOR right_d =
+    {
+        ROOM_RIGHT,
+        FLOOR_Y,
+        ROOM_BACK
+    };
+
+
+    /* =====================================================
+       INICIALIZA
+       ===================================================== */
 
     init_graphics();
 
+
+    /* =====================================================
+       LOOP PRINCIPAL
+       ===================================================== */
 
     while (1)
     {
@@ -395,61 +557,86 @@ int main(void)
             db[db_active].packet;
 
 
-        /*
-         * Aplica a câmera.
-         */
-
         set_camera(&camera);
 
 
-        /*
-         * PISO
-         *
-         * VERDE
-         */
+        /* -------------------------------------------------
+           PISO
+           ------------------------------------------------- */
 
         draw_quad(
             &floor_a,
             &floor_b,
             &floor_c,
             &floor_d,
-            40,
-            150,
-            60
+
+            75,
+            65,
+            55
         );
 
 
-        /*
-         * PAREDE DO FUNDO
-         *
-         * VERMELHA
-         */
+        /* -------------------------------------------------
+           TETO
+           ------------------------------------------------- */
+
+        draw_quad(
+            &ceiling_a,
+            &ceiling_b,
+            &ceiling_c,
+            &ceiling_d,
+
+            65,
+            65,
+            70
+        );
+
+
+        /* -------------------------------------------------
+           PAREDE DO FUNDO
+           ------------------------------------------------- */
 
         draw_quad(
             &back_a,
             &back_b,
             &back_c,
             &back_d,
-            180,
-            45,
-            45
+
+            125,
+            65,
+            65
         );
 
 
-        /*
-         * PAREDE LATERAL
-         *
-         * AZUL
-         */
+        /* -------------------------------------------------
+           PAREDE ESQUERDA
+           ------------------------------------------------- */
 
         draw_quad(
-            &side_a,
-            &side_b,
-            &side_c,
-            &side_d,
-            45,
+            &left_a,
+            &left_b,
+            &left_c,
+            &left_d,
+
+            55,
+            95,
+            70
+        );
+
+
+        /* -------------------------------------------------
+           PAREDE DIREITA
+           ------------------------------------------------- */
+
+        draw_quad(
+            &right_a,
+            &right_b,
+            &right_c,
+            &right_d,
+
+            65,
             80,
-            180
+            120
         );
 
 
