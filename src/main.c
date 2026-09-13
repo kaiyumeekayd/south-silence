@@ -25,56 +25,17 @@ char *db_nextpri;
 
 
 /*
- * Índices dos vértices de cada face.
- *
- * Cada face é formada por dois triângulos.
+ * ============================================================
+ * Inicialização gráfica
+ * ============================================================
  */
-typedef struct
-{
-    short v0;
-    short v1;
-    short v2;
-    short v3;
-} Face;
-
-
-/*
- * 8 vértices do cubo.
- */
-SVECTOR cube_vertices[] =
-{
-    { -100, -100, -100, 0 },
-    {  100, -100, -100, 0 },
-    { -100,  100, -100, 0 },
-    {  100,  100, -100, 0 },
-
-    {  100, -100,  100, 0 },
-    { -100, -100,  100, 0 },
-    {  100,  100,  100, 0 },
-    { -100,  100,  100, 0 }
-};
-
-
-/*
- * 6 faces.
- */
-Face cube_faces[] =
-{
-    { 0, 1, 2, 3 },
-    { 4, 5, 6, 7 },
-    { 5, 4, 0, 1 },
-    { 6, 7, 3, 2 },
-    { 0, 2, 5, 7 },
-    { 3, 1, 6, 4 }
-};
-
 
 void init_graphics(void)
 {
     ResetGraph(0);
 
     /*
-     * Buffer 0
+     * Framebuffer 0
      */
     SetDefDispEnv(
         &db[0].disp,
@@ -94,16 +55,16 @@ void init_graphics(void)
 
     setRGB0(
         &db[0].draw,
-        12,
-        12,
-        16
+        8,
+        8,
+        12
     );
 
     db[0].draw.isbg = 1;
 
 
     /*
-     * Buffer 1
+     * Framebuffer 1
      */
     SetDefDispEnv(
         &db[1].disp,
@@ -123,16 +84,16 @@ void init_graphics(void)
 
     setRGB0(
         &db[1].draw,
-        12,
-        12,
-        16
+        8,
+        8,
+        12
     );
 
     db[1].draw.isbg = 1;
 
 
     /*
-     * Ordering Tables.
+     * Ordering Tables
      */
     ClearOTagR(
         db[0].ot,
@@ -147,34 +108,39 @@ void init_graphics(void)
 
     db_nextpri = db[0].packet;
 
-    PutDrawEnv(
-        &db[0].draw
-    );
-
 
     /*
-     * Inicializa GTE.
+     * GTE
      */
     InitGeom();
 
-    /*
-     * Centro da tela.
-     */
     gte_SetGeomOffset(
         SCREEN_XRES >> 1,
         SCREEN_YRES >> 1
     );
 
-    /*
-     * FOV / distância de projeção.
-     */
     gte_SetGeomScreen(
         SCREEN_XRES >> 1
+    );
+
+
+    PutDrawEnv(
+        &db[0].draw
+    );
+
+    PutDispEnv(
+        &db[0].disp
     );
 
     SetDispMask(1);
 }
 
+
+/*
+ * ============================================================
+ * Troca de framebuffer
+ * ============================================================
+ */
 
 void display(void)
 {
@@ -201,14 +167,35 @@ void display(void)
     );
 
     DrawOTag(
-        db[1 - db_active].ot +
-        (OT_LEN - 1)
+        db[1 - db_active].ot + (OT_LEN - 1)
     );
 }
 
 
+/*
+ * ============================================================
+ * South Silence - primeiro chão
+ * ============================================================
+ *
+ * O chão é um retângulo formado por dois triângulos.
+ *
+ *        A----------------B
+ *         \              /
+ *          \            /
+ *           \          /
+ *            \        /
+ *             C------D
+ *
+ * A e B ficam mais distantes.
+ * C e D ficam mais próximos da câmera.
+ *
+ * Isso cria a perspectiva de um chão.
+ */
+
 int main(void)
 {
+    MATRIX matrix;
+
     SVECTOR rotation =
     {
         0,
@@ -224,7 +211,48 @@ int main(void)
         600
     };
 
-    MATRIX matrix;
+
+    /*
+     * Quatro cantos do chão.
+     *
+     * Y positivo = mais para cima.
+     * Y negativo = mais para baixo.
+     *
+     * Z positivo = mais distante.
+     */
+
+    SVECTOR A =
+    {
+        -250,
+         100,
+         300,
+         0
+    };
+
+    SVECTOR B =
+    {
+         250,
+         100,
+         300,
+         0
+    };
+
+    SVECTOR C =
+    {
+        -250,
+        -120,
+        -250,
+        0
+    };
+
+    SVECTOR D =
+    {
+         250,
+        -120,
+        -250,
+        0
+    };
+
 
     init_graphics();
 
@@ -233,15 +261,16 @@ int main(void)
     {
         POLY_F3 *poly;
 
-        int i;
-
         long depth;
-        long clip;
+        long depth2;
 
 
         /*
-         * Matriz de transformação.
+         * ====================================================
+         * Matriz
+         * ====================================================
          */
+
         RotMatrix(
             &rotation,
             &matrix
@@ -262,191 +291,149 @@ int main(void)
 
 
         /*
-         * Começa a escrever os polígonos
-         * no buffer atual.
+         * ====================================================
+         * Primeiro triângulo
+         *
+         * A -> B -> C
+         * ====================================================
          */
+
         poly =
             (POLY_F3 *)db_nextpri;
 
+        setPolyF3(poly);
+
+        setRGB0(
+            poly,
+            65,
+            65,
+            70
+        );
+
+
+        gte_ldv3(
+            &A,
+            &B,
+            &C
+        );
+
+        gte_rtpt();
+
+
+        gte_stsxy0(
+            &poly->x0
+        );
+
+        gte_stsxy1(
+            &poly->x1
+        );
+
+        gte_stsxy2(
+            &poly->x2
+        );
+
+
+        gte_avsz3();
+
+        gte_stotz(
+            &depth
+        );
+
+        depth >>= 2;
+
+
+        if (depth < 0)
+            depth = 0;
+
+        if (depth >= OT_LEN)
+            depth = OT_LEN - 1;
+
+
+        addPrim(
+            db[db_active].ot + depth,
+            poly
+        );
+
+        poly++;
+
 
         /*
-         * 6 faces.
+         * ====================================================
+         * Segundo triângulo
+         *
+         * B -> D -> C
+         * ====================================================
          */
-        for (i = 0; i < 6; i++)
-        {
-            /*
-             * Primeiro triângulo
-             * da face.
-             */
-            gte_ldv3(
-                &cube_vertices[cube_faces[i].v0],
-                &cube_vertices[cube_faces[i].v1],
-                &cube_vertices[cube_faces[i].v2]
-            );
 
-            /*
-             * Transformação 3D
-             * + perspectiva.
-             */
-            gte_rtpt();
+        setPolyF3(poly);
 
-            /*
-             * Backface culling.
-             */
-            gte_nclip();
-
-            gte_stopz(
-                &clip
-            );
-
-            /*
-             * Se estiver virado para
-             * trás, não desenha.
-             */
-            if (clip < 0)
-                continue;
+        setRGB0(
+            poly,
+            48,
+            48,
+            53
+        );
 
 
-            /*
-             * Profundidade média.
-             */
-            gte_avsz3();
+        gte_ldv3(
+            &B,
+            &D,
+            &C
+        );
 
-            gte_stotz(
-                &depth
-            );
-
-            depth >>= 2;
+        gte_rtpt();
 
 
-            if (depth < 0)
-                depth = 0;
+        gte_stsxy0(
+            &poly->x0
+        );
 
-            if (depth >= OT_LEN)
-                depth = OT_LEN - 1;
+        gte_stsxy1(
+            &poly->x1
+        );
 
-
-            /*
-             * Primeiro triângulo.
-             */
-            setPolyF3(poly);
-
-            setRGB0(
-                poly,
-                150,
-                150,
-                150
-            );
-
-            gte_stsxy0(
-                &poly->x0
-            );
-
-            gte_stsxy1(
-                &poly->x1
-            );
-
-            gte_stsxy2(
-                &poly->x2
-            );
-
-            addPrim(
-                db[db_active].ot + depth,
-                poly
-            );
-
-            poly++;
+        gte_stsxy2(
+            &poly->x2
+        );
 
 
-            /*
-             * Segundo triângulo da face.
-             *
-             * Precisamos transformar os três
-             * vértices correspondentes.
-             */
-            gte_ldv3(
-                &cube_vertices[cube_faces[i].v2],
-                &cube_vertices[cube_faces[i].v1],
-                &cube_vertices[cube_faces[i].v3]
-            );
+        gte_avsz3();
 
-            gte_rtpt();
+        gte_stotz(
+            &depth2
+        );
 
-            gte_nclip();
-
-            gte_stopz(
-                &clip
-            );
-
-            if (clip < 0)
-                continue;
-
-            gte_avsz3();
-
-            gte_stotz(
-                &depth
-            );
-
-            depth >>= 2;
+        depth2 >>= 2;
 
 
-            if (depth < 0)
-                depth = 0;
+        if (depth2 < 0)
+            depth2 = 0;
 
-            if (depth >= OT_LEN)
-                depth = OT_LEN - 1;
+        if (depth2 >= OT_LEN)
+            depth2 = OT_LEN - 1;
 
 
-            setPolyF3(poly);
+        addPrim(
+            db[db_active].ot + depth2,
+            poly
+        );
 
-            setRGB0(
-                poly,
-                100,
-                100,
-                100
-            );
-
-            gte_stsxy0(
-                &poly->x0
-            );
-
-            gte_stsxy1(
-                &poly->x1
-            );
-
-            gte_stsxy2(
-                &poly->x2
-            );
-
-            addPrim(
-                db[db_active].ot + depth,
-                poly
-            );
-
-            poly++;
-        }
+        poly++;
 
 
         /*
-         * Atualiza ponteiro para o próximo
-         * pacote.
+         * Próximo espaço do packet buffer.
          */
         db_nextpri =
             (char *)poly;
 
 
         /*
-         * Gira o cubo.
-         */
-        rotation.vx += 8;
-        rotation.vy += 12;
-
-
-        /*
-         * Troca o framebuffer.
+         * Troca framebuffer.
          */
         display();
     }
+
 
     return 0;
 }
