@@ -4,23 +4,42 @@
 #include <psxgte.h>
 #include <inline_c.h>
 
+
+/*
+ * ============================================================
+ * CONFIGURAÇÃO
+ * ============================================================
+ */
+
 #define SCREEN_XRES 320
 #define SCREEN_YRES 240
 
 #define OT_LEN 256
 #define PACKET_LEN 8192
 
+
+/*
+ * ============================================================
+ * BUFFER DE RENDERIZAÇÃO
+ * ============================================================
+ */
+
 typedef struct
 {
     DISPENV disp;
     DRAWENV draw;
+
     uint32_t ot[OT_LEN];
+
     char packet[PACKET_LEN];
+
 } RenderBuffer;
+
 
 RenderBuffer db[2];
 
 int db_active = 0;
+
 char *db_nextpri;
 
 
@@ -33,13 +52,15 @@ char *db_nextpri;
 typedef struct
 {
     SVECTOR rotation;
+
     VECTOR position;
+
 } Camera;
 
 
 /*
  * ============================================================
- * Inicialização gráfica
+ * INICIALIZAÇÃO GRÁFICA
  * ============================================================
  */
 
@@ -47,9 +68,13 @@ void init_graphics(void)
 {
     ResetGraph(0);
 
+
     /*
-     * Framebuffer 0
+     * --------------------------------------------------------
+     * FRAMEBUFFER 0
+     * --------------------------------------------------------
      */
+
     SetDefDispEnv(
         &db[0].disp,
         0,
@@ -77,8 +102,11 @@ void init_graphics(void)
 
 
     /*
-     * Framebuffer 1
+     * --------------------------------------------------------
+     * FRAMEBUFFER 1
+     * --------------------------------------------------------
      */
+
     SetDefDispEnv(
         &db[1].disp,
         SCREEN_XRES,
@@ -105,6 +133,12 @@ void init_graphics(void)
     db[1].draw.isbg = 1;
 
 
+    /*
+     * --------------------------------------------------------
+     * ORDERING TABLE
+     * --------------------------------------------------------
+     */
+
     ClearOTagR(
         db[0].ot,
         OT_LEN
@@ -115,23 +149,36 @@ void init_graphics(void)
         OT_LEN
     );
 
-    db_nextpri = db[0].packet;
+
+    db_nextpri =
+        db[0].packet;
 
 
     /*
+     * --------------------------------------------------------
      * GTE
+     * --------------------------------------------------------
      */
+
     InitGeom();
+
 
     gte_SetGeomOffset(
         SCREEN_XRES >> 1,
         SCREEN_YRES >> 1
     );
 
+
     gte_SetGeomScreen(
         SCREEN_XRES >> 1
     );
 
+
+    /*
+     * --------------------------------------------------------
+     * PRIMEIRO FRAME
+     * --------------------------------------------------------
+     */
 
     PutDrawEnv(
         &db[0].draw
@@ -147,7 +194,7 @@ void init_graphics(void)
 
 /*
  * ============================================================
- * Troca de framebuffer
+ * TROCA DE FRAMEBUFFER
  * ============================================================
  */
 
@@ -157,15 +204,19 @@ void display(void)
 
     VSync(0);
 
+
     db_active ^= 1;
+
 
     db_nextpri =
         db[db_active].packet;
+
 
     ClearOTagR(
         db[db_active].ot,
         OT_LEN
     );
+
 
     PutDrawEnv(
         &db[db_active].draw
@@ -175,6 +226,7 @@ void display(void)
         &db[db_active].disp
     );
 
+
     DrawOTag(
         db[1 - db_active].ot + (OT_LEN - 1)
     );
@@ -183,7 +235,7 @@ void display(void)
 
 /*
  * ============================================================
- * Configura a câmera
+ * CÂMERA
  * ============================================================
  */
 
@@ -191,25 +243,31 @@ void set_camera(Camera *camera)
 {
     MATRIX matrix;
 
+
     /*
-     * Cria a matriz de rotação da câmera.
+     * Cria a matriz de rotação.
      */
+
     RotMatrix(
         &camera->rotation,
         &matrix
     );
 
+
     /*
      * Aplica a posição.
      */
+
     TransMatrix(
         &matrix,
         &camera->position
     );
 
+
     /*
-     * Envia a matriz para o GTE.
+     * Envia para o GTE.
      */
+
     gte_SetRotMatrix(
         &matrix
     );
@@ -222,7 +280,7 @@ void set_camera(Camera *camera)
 
 /*
  * ============================================================
- * Triângulo 3D
+ * TRIÂNGULO 3D
  * ============================================================
  */
 
@@ -236,14 +294,24 @@ void draw_triangle(
 )
 {
     POLY_F3 *poly;
+
     long depth;
 
+
+    /*
+     * Reserva espaço para o polígono.
+     */
 
     poly =
         (POLY_F3 *)db_nextpri;
 
 
+    /*
+     * Configura POLY_F3.
+     */
+
     setPolyF3(poly);
+
 
     setRGB0(
         poly,
@@ -254,8 +322,9 @@ void draw_triangle(
 
 
     /*
-     * Carrega os vértices.
+     * Carrega os três vértices no GTE.
      */
+
     gte_ldv3(
         a,
         b,
@@ -264,14 +333,16 @@ void draw_triangle(
 
 
     /*
-     * Rotação + translação + perspectiva.
+     * Transformação 3D + perspectiva.
      */
+
     gte_rtpt();
 
 
     /*
-     * Coordenadas na tela.
+     * Coordenadas projetadas na tela.
      */
+
     gte_stsxy0(
         &poly->x0
     );
@@ -286,16 +357,27 @@ void draw_triangle(
 
 
     /*
-     * Profundidade.
+     * Calcula profundidade média.
      */
+
     gte_avsz3();
 
     gte_stotz(
         &depth
     );
 
-    depth >>= 2;
 
+    /*
+     * Converte a profundidade do GTE
+     * para nossa Ordering Table de 256 níveis.
+     */
+
+    depth >>= 8;
+
+
+    /*
+     * Limita o valor.
+     */
 
     if (depth < 0)
         depth = 0;
@@ -305,13 +387,18 @@ void draw_triangle(
 
 
     /*
-     * Ordering Table.
+     * Coloca o polígono na Ordering Table.
      */
+
     addPrim(
         db[db_active].ot + depth,
         poly
     );
 
+
+    /*
+     * Avança o ponteiro do packet buffer.
+     */
 
     db_nextpri =
         (char *)(poly + 1);
@@ -320,36 +407,42 @@ void draw_triangle(
 
 /*
  * ============================================================
- * Parede retangular
+ * QUADRILÁTERO 3D
+ *
+ * Um quadrilátero é formado por dois triângulos.
  * ============================================================
  */
 
-void draw_wall(
+void draw_quad(
     SVECTOR *a,
     SVECTOR *b,
     SVECTOR *c,
     SVECTOR *d,
-    int r,
-    int g,
-    int bcolor
+    int r1,
+    int g1,
+    int b1,
+    int r2,
+    int g2,
+    int b2
 )
 {
     draw_triangle(
         a,
         b,
         c,
-        r,
-        g,
-        bcolor
+        r1,
+        g1,
+        b1
     );
+
 
     draw_triangle(
         a,
         c,
         d,
-        r - 15,
-        g - 15,
-        bcolor - 15
+        r2,
+        g2,
+        b2
     );
 }
 
@@ -395,17 +488,19 @@ int main(void)
     {
         -250,
         -120,
-        300,
+         300,
         0
     };
+
 
     SVECTOR floor_b =
     {
          250,
         -120,
-        300,
+         300,
         0
     };
+
 
     SVECTOR floor_c =
     {
@@ -414,6 +509,7 @@ int main(void)
         -250,
         0
     };
+
 
     SVECTOR floor_d =
     {
@@ -434,31 +530,34 @@ int main(void)
     {
         -250,
         -120,
-        300,
+         300,
         0
     };
+
 
     SVECTOR back_b =
     {
          250,
         -120,
-        300,
+         300,
         0
     };
+
 
     SVECTOR back_c =
     {
          250,
          180,
-        300,
+         300,
         0
     };
+
 
     SVECTOR back_d =
     {
         -250,
          180,
-        300,
+         300,
         0
     };
 
@@ -477,6 +576,7 @@ int main(void)
         0
     };
 
+
     SVECTOR left_b =
     {
         -250,
@@ -485,6 +585,7 @@ int main(void)
         0
     };
 
+
     SVECTOR left_c =
     {
         -250,
@@ -492,6 +593,7 @@ int main(void)
          300,
         0
     };
+
 
     SVECTOR left_d =
     {
@@ -516,6 +618,7 @@ int main(void)
         0
     };
 
+
     SVECTOR right_b =
     {
          250,
@@ -524,6 +627,7 @@ int main(void)
         0
     };
 
+
     SVECTOR right_c =
     {
          250,
@@ -531,6 +635,7 @@ int main(void)
         -250,
         0
     };
+
 
     SVECTOR right_d =
     {
@@ -552,91 +657,120 @@ int main(void)
 
     /*
      * ========================================================
-     * LOOP
+     * LOOP PRINCIPAL
      * ========================================================
      */
 
     while (1)
     {
         /*
-         * Configura a câmera.
+         * ----------------------------------------------------
+         * CÂMERA
+         * ----------------------------------------------------
          */
+
         set_camera(
             &camera
         );
 
 
         /*
-         * ====================================================
+         * ----------------------------------------------------
          * CHÃO
-         * ====================================================
+         *
+         * Agora as duas partes possuem tons claramente
+         * visíveis para verificarmos a geometria.
+         * ----------------------------------------------------
          */
 
-        draw_wall(
+        draw_quad(
             &floor_a,
             &floor_b,
             &floor_c,
             &floor_d,
-            55,
-            55,
-            60
+
+            105,
+            105,
+            110,
+
+            90,
+            90,
+            95
         );
 
 
         /*
-         * ====================================================
+         * ----------------------------------------------------
          * PAREDE DE FUNDO
-         * ====================================================
+         * ----------------------------------------------------
          */
 
-        draw_wall(
+        draw_quad(
             &back_a,
             &back_b,
             &back_c,
             &back_d,
+
             75,
             75,
-            82
+            82,
+
+            60,
+            60,
+            67
         );
 
 
         /*
-         * ====================================================
+         * ----------------------------------------------------
          * PAREDE ESQUERDA
-         * ====================================================
+         * ----------------------------------------------------
          */
 
-        draw_wall(
+        draw_quad(
             &left_a,
             &left_b,
             &left_c,
             &left_d,
+
             60,
             60,
-            68
+            68,
+
+            45,
+            45,
+            53
         );
 
 
         /*
-         * ====================================================
+         * ----------------------------------------------------
          * PAREDE DIREITA
-         * ====================================================
- */
+         * ----------------------------------------------------
+         */
 
-        draw_wall(
+        draw_quad(
             &right_a,
             &right_b,
             &right_c,
             &right_d,
+
             45,
             45,
-            52
+            52,
+
+            30,
+            30,
+            37
         );
 
 
         /*
-         * Mostra o frame.
+         * ----------------------------------------------------
+         * MOSTRA O FRAME
+         * ----------------------------------------------------
          */
+
         display();
     }
 
