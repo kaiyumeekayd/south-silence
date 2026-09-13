@@ -5,51 +5,31 @@
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
 
-#define FOCAL_LENGTH 256
 #define OT_LENGTH 16
 
 typedef struct
 {
-    long x;
-    long y;
-    long z;
-} Vertex3D;
-
-typedef struct
-{
-    POLY_F3 polygons[6];
+    POLY_F3 polygons[3];
     uint32_t ot[OT_LENGTH];
 } RenderContext;
 
-static int project_x(Vertex3D v)
-{
-    return 160 + (int)((v.x * FOCAL_LENGTH) / v.z);
-}
-
-static int project_y(Vertex3D v)
-{
-    return 120 - (int)((v.y * FOCAL_LENGTH) / v.z);
-}
-
 static void make_triangle(
     POLY_F3 *poly,
-    Vertex3D a,
-    Vertex3D b,
-    Vertex3D c,
-    int r,
-    int g,
-    int bcol
+    int x0, int y0,
+    int x1, int y1,
+    int x2, int y2,
+    int r, int g, int b
 )
 {
     setPolyF3(poly);
 
-    setRGB0(poly, r, g, bcol);
+    setRGB0(poly, r, g, b);
 
     setXY3(
         poly,
-        project_x(a), project_y(a),
-        project_x(b), project_y(b),
-        project_x(c), project_y(c)
+        x0, y0,
+        x1, y1,
+        x2, y2
     );
 }
 
@@ -87,106 +67,47 @@ int main(void)
 
     SetDispMask(1);
 
-    /*
-     * CUBO
-     *
-     * Frente = Z 350
-     * Trás   = Z 500
-     */
-    Vertex3D v[8] =
-    {
-        /* Frente */
-        { -70,  70, 350 },  /* 0 */
-        {  70,  70, 350 },  /* 1 */
-        {  70, -70, 350 },  /* 2 */
-        { -70, -70, 350 },  /* 3 */
-
-        /* Trás */
-        { -70,  70, 500 },  /* 4 */
-        {  70,  70, 500 },  /* 5 */
-        {  70, -70, 500 },  /* 6 */
-        { -70, -70, 500 }   /* 7 */
-    };
-
     while (1)
     {
         ClearOTagR(ctx.ot, OT_LENGTH);
 
         /*
-         * TOPO
-         *
-         * Ordem dos vértices corrigida
-         * para a face ficar voltada para a câmera.
+         * TRIÂNGULO 1
          */
         make_triangle(
             &ctx.polygons[0],
-            v[0], v[5], v[4],
-            100, 100, 100
+            40, 40,
+            120, 40,
+            80, 100,
+            180, 180, 180
         );
 
+        /*
+         * TRIÂNGULO 2
+         */
         make_triangle(
             &ctx.polygons[1],
-            v[0], v[1], v[5],
+            120, 100,
+            200, 100,
+            160, 160,
             100, 100, 100
         );
 
         /*
-         * LADO DIREITO
-         *
-         * Ordem dos vértices corrigida.
+         * TRIÂNGULO 3
          */
         make_triangle(
             &ctx.polygons[2],
-            v[1], v[6], v[5],
-            70, 70, 70
+            200, 40,
+            280, 40,
+            240, 100,
+            60, 60, 60
         );
 
-        make_triangle(
-            &ctx.polygons[3],
-            v[1], v[2], v[6],
-            70, 70, 70
-        );
+        addPrim(&ctx.ot[12], &ctx.polygons[0]);
+        addPrim(&ctx.ot[11], &ctx.polygons[1]);
+        addPrim(&ctx.ot[10], &ctx.polygons[2]);
 
-        /*
-         * FRENTE
-         *
-         * Face mais próxima da câmera.
-         */
-        make_triangle(
-            &ctx.polygons[4],
-            v[0], v[1], v[2],
-            150, 150, 150
-        );
-
-        make_triangle(
-            &ctx.polygons[5],
-            v[0], v[2], v[3],
-            150, 150, 150
-        );
-
-        /*
-         * Painter's algorithm.
-         *
-         * Faces mais distantes:
-         * desenhadas primeiro.
-         */
-        addPrim(&ctx.ot[14], &ctx.polygons[0]);
-        addPrim(&ctx.ot[14], &ctx.polygons[1]);
-
-        addPrim(&ctx.ot[13], &ctx.polygons[2]);
-        addPrim(&ctx.ot[13], &ctx.polygons[3]);
-
-        /*
-         * Frente:
-         * desenhada por último.
-         */
-        addPrim(&ctx.ot[12], &ctx.polygons[4]);
-        addPrim(&ctx.ot[12], &ctx.polygons[5]);
-
-        /*
-         * ClearOTagR cria a cadeia de trás
-         * para frente.
-         */
         DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
         VSync(0);
