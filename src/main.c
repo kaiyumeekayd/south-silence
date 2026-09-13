@@ -5,24 +5,12 @@
 #include <inline_c.h>
 
 
-/*
- * ============================================================
- * CONFIGURAÇÃO
- * ============================================================
- */
-
 #define SCREEN_XRES 320
 #define SCREEN_YRES 240
 
 #define OT_LEN 256
 #define PACKET_LEN 8192
 
-
-/*
- * ============================================================
- * BUFFER DE RENDERIZAÇÃO
- * ============================================================
- */
 
 typedef struct
 {
@@ -52,7 +40,6 @@ char *db_nextpri;
 typedef struct
 {
     SVECTOR rotation;
-
     VECTOR position;
 
 } Camera;
@@ -60,7 +47,7 @@ typedef struct
 
 /*
  * ============================================================
- * INICIALIZAÇÃO GRÁFICA
+ * GRÁFICOS
  * ============================================================
  */
 
@@ -70,9 +57,7 @@ void init_graphics(void)
 
 
     /*
-     * --------------------------------------------------------
      * FRAMEBUFFER 0
-     * --------------------------------------------------------
      */
 
     SetDefDispEnv(
@@ -102,9 +87,7 @@ void init_graphics(void)
 
 
     /*
-     * --------------------------------------------------------
      * FRAMEBUFFER 1
-     * --------------------------------------------------------
      */
 
     SetDefDispEnv(
@@ -134,9 +117,7 @@ void init_graphics(void)
 
 
     /*
-     * --------------------------------------------------------
      * ORDERING TABLE
-     * --------------------------------------------------------
      */
 
     ClearOTagR(
@@ -150,14 +131,11 @@ void init_graphics(void)
     );
 
 
-    db_nextpri =
-        db[0].packet;
+    db_nextpri = db[0].packet;
 
 
     /*
-     * --------------------------------------------------------
      * GTE
-     * --------------------------------------------------------
      */
 
     InitGeom();
@@ -175,9 +153,7 @@ void init_graphics(void)
 
 
     /*
-     * --------------------------------------------------------
-     * PRIMEIRO FRAME
-     * --------------------------------------------------------
+     * TELA
      */
 
     PutDrawEnv(
@@ -244,19 +220,11 @@ void set_camera(Camera *camera)
     MATRIX matrix;
 
 
-    /*
-     * Cria a matriz de rotação.
-     */
-
     RotMatrix(
         &camera->rotation,
         &matrix
     );
 
-
-    /*
-     * Aplica a posição.
-     */
 
     TransMatrix(
         &matrix,
@@ -264,13 +232,10 @@ void set_camera(Camera *camera)
     );
 
 
-    /*
-     * Envia para o GTE.
-     */
-
     gte_SetRotMatrix(
         &matrix
     );
+
 
     gte_SetTransMatrix(
         &matrix
@@ -307,7 +272,8 @@ void draw_triangle(
 
 
     /*
-     * Configura POLY_F3.
+     * Configura o triângulo.
+
      */
 
     setPolyF3(poly);
@@ -322,7 +288,7 @@ void draw_triangle(
 
 
     /*
-     * Carrega os três vértices no GTE.
+     * Envia os vértices para o GTE.
      */
 
     gte_ldv3(
@@ -340,7 +306,7 @@ void draw_triangle(
 
 
     /*
-     * Coordenadas projetadas na tela.
+     * Coordenadas na tela.
      */
 
     gte_stsxy0(
@@ -357,7 +323,7 @@ void draw_triangle(
 
 
     /*
-     * Calcula profundidade média.
+     * Profundidade média.
      */
 
     gte_avsz3();
@@ -368,26 +334,23 @@ void draw_triangle(
 
 
     /*
-     * Converte a profundidade do GTE
-     * para nossa Ordering Table de 256 níveis.
+     * Converte para a Ordering Table.
+
      */
 
     depth >>= 8;
 
 
-    /*
-     * Limita o valor.
-     */
-
     if (depth < 0)
         depth = 0;
+
 
     if (depth >= OT_LEN)
         depth = OT_LEN - 1;
 
 
     /*
-     * Coloca o polígono na Ordering Table.
+     * Adiciona à Ordering Table.
      */
 
     addPrim(
@@ -397,7 +360,8 @@ void draw_triangle(
 
 
     /*
-     * Avança o ponteiro do packet buffer.
+     * Próximo polígono.
+
      */
 
     db_nextpri =
@@ -407,9 +371,9 @@ void draw_triangle(
 
 /*
  * ============================================================
- * QUADRILÁTERO 3D
+ * QUADRILÁTERO
  *
- * Um quadrilátero é formado por dois triângulos.
+ * Formado por dois triângulos.
  * ============================================================
  */
 
@@ -657,16 +621,14 @@ int main(void)
 
     /*
      * ========================================================
-     * LOOP PRINCIPAL
+     * LOOP
      * ========================================================
-     */
+ */
 
     while (1)
     {
         /*
-         * ----------------------------------------------------
          * CÂMERA
-         * ----------------------------------------------------
          */
 
         set_camera(
@@ -675,12 +637,11 @@ int main(void)
 
 
         /*
-         * ----------------------------------------------------
+         * ====================================================
          * CHÃO
          *
-         * Agora as duas partes possuem tons claramente
-         * visíveis para verificarmos a geometria.
-         * ----------------------------------------------------
+         * AZUL
+         * ====================================================
          */
 
         draw_quad(
@@ -689,20 +650,22 @@ int main(void)
             &floor_c,
             &floor_d,
 
-            105,
-            105,
-            110,
+            40,
+            80,
+            220,
 
-            90,
-            90,
-            95
+            20,
+            40,
+            140
         );
 
 
         /*
-         * ----------------------------------------------------
+         * ====================================================
          * PAREDE DE FUNDO
-         * ----------------------------------------------------
+         *
+         * VERMELHA
+         * ====================================================
          */
 
         draw_quad(
@@ -711,20 +674,22 @@ int main(void)
             &back_c,
             &back_d,
 
-            75,
-            75,
-            82,
+            220,
+            40,
+            40,
 
-            60,
-            60,
-            67
+            140,
+            20,
+            20
         );
 
 
         /*
-         * ----------------------------------------------------
+         * ====================================================
          * PAREDE ESQUERDA
-         * ----------------------------------------------------
+         *
+         * VERDE
+         * ====================================================
          */
 
         draw_quad(
@@ -733,20 +698,22 @@ int main(void)
             &left_c,
             &left_d,
 
-            60,
-            60,
-            68,
+            40,
+            200,
+            70,
 
-            45,
-            45,
-            53
+            20,
+            110,
+            35
         );
 
 
         /*
-         * ----------------------------------------------------
+         * ====================================================
          * PAREDE DIREITA
-         * ----------------------------------------------------
+         *
+         * AMARELA
+         * ====================================================
          */
 
         draw_quad(
@@ -755,20 +722,20 @@ int main(void)
             &right_c,
             &right_d,
 
-            45,
-            45,
-            52,
+            230,
+            200,
+            40,
 
-            30,
-            30,
-            37
+            150,
+            120,
+            20
         );
 
 
         /*
-         * ----------------------------------------------------
+         * ====================================================
          * MOSTRA O FRAME
-         * ----------------------------------------------------
+         * ====================================================
          */
 
         display();
