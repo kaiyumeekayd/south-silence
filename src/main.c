@@ -2,6 +2,7 @@
 
 #include <psxgpu.h>
 #include <psxgte.h>
+#include <inline_c.h>
 #include <psxetc.h>
 
 #define SCREEN_XRES 320
