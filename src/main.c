@@ -6,6 +6,8 @@
 #define SCREEN_HEIGHT 240
 
 #define FOCAL_LENGTH 256
+#define CAMERA_HEIGHT 70
+
 #define OT_LENGTH 16
 
 typedef struct
@@ -17,7 +19,7 @@ typedef struct
 
 typedef struct
 {
-    POLY_F3 polygons[6];
+    POLY_F3 polygons[2];
     uint32_t ot[OT_LENGTH];
 } RenderContext;
 
@@ -28,7 +30,9 @@ static int project_x(Vertex3D v)
 
 static int project_y(Vertex3D v)
 {
-    return 120 - (int)((v.y * FOCAL_LENGTH) / v.z);
+    return 120
+        - (int)((v.y * FOCAL_LENGTH) / v.z)
+        + (int)((CAMERA_HEIGHT * FOCAL_LENGTH) / v.z);
 }
 
 static void make_triangle(
@@ -88,108 +92,45 @@ int main(void)
     SetDispMask(1);
 
     /*
-     * CUBO
+     * SUPERFÍCIE 3D
      *
-     *              4 -------- 5
-     *             /|         /|
-     *            / |        / |
-     *           7 -------- 6  |
-     *           |  |       |  |
-     *           |  0 ------|--1
-     *           | /        | /
-     *           |/         |/
-     *           3 -------- 2
+     * Frente:
+     * Z = 300
      *
-     * 0-1-2-3 = frente
-     * 4-5-6-7 = trás
+     * Trás:
+     * Z = 500
      */
 
-    Vertex3D v[8] =
-    {
-        /* Frente */
-        { -70,  70, 300 },  /* 0 */
-        {  70,  70, 300 },  /* 1 */
-        {  70, -70, 300 },  /* 2 */
-        { -70, -70, 300 },  /* 3 */
+    Vertex3D v0 = { -70,  70, 300 };
+    Vertex3D v1 = {  70,  70, 300 };
 
-        /* Trás */
-        { -70,  70, 500 },  /* 4 */
-        {  70,  70, 500 },  /* 5 */
-        {  70, -70, 500 },  /* 6 */
-        { -70, -70, 500 }   /* 7 */
-    };
+    Vertex3D v2 = {  70, -70, 500 };
+    Vertex3D v3 = { -70, -70, 500 };
 
     while (1)
     {
         ClearOTagR(ctx.ot, OT_LENGTH);
 
         /*
-         * TOPO
-         *
-         * Dois triângulos.
+         * Primeiro triângulo
          */
         make_triangle(
             &ctx.polygons[0],
-            v[0], v[5], v[4],
-            110, 110, 110
+            v0, v1, v2,
+            170, 170, 170
         );
 
+        /*
+         * Segundo triângulo
+         */
         make_triangle(
             &ctx.polygons[1],
-            v[0], v[1], v[5],
-            110, 110, 110
+            v0, v2, v3,
+            100, 100, 100
         );
 
-        /*
-         * LADO DIREITO
-         *
-         * Dois triângulos.
-         */
-        make_triangle(
-            &ctx.polygons[2],
-            v[1], v[6], v[5],
-            70, 70, 70
-        );
-
-        make_triangle(
-            &ctx.polygons[3],
-            v[1], v[2], v[6],
-            70, 70, 70
-        );
-
-        /*
-         * FRENTE
-         *
-         * Dois triângulos.
-         */
-        make_triangle(
-            &ctx.polygons[4],
-            v[0], v[1], v[2],
-            170, 170, 170
-        );
-
-        make_triangle(
-            &ctx.polygons[5],
-            v[0], v[2], v[3],
-            170, 170, 170
-        );
-
-        /*
-         * Faces mais distantes primeiro.
-         */
-
-        addPrim(&ctx.ot[14], &ctx.polygons[0]);
-        addPrim(&ctx.ot[14], &ctx.polygons[1]);
-
-        addPrim(&ctx.ot[13], &ctx.polygons[2]);
-        addPrim(&ctx.ot[13], &ctx.polygons[3]);
-
-        /*
-         * Frente por último.
-         */
-
-        addPrim(&ctx.ot[12], &ctx.polygons[4]);
-        addPrim(&ctx.ot[12], &ctx.polygons[5]);
+        addPrim(&ctx.ot[12], &ctx.polygons[0]);
+        addPrim(&ctx.ot[12], &ctx.polygons[1]);
 
         DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
