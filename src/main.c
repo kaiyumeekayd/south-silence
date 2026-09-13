@@ -107,7 +107,7 @@ void init_graphics(void)
 
 
     /*
-     * GTE
+     * Inicialização do GTE.
      */
     InitGeom();
 
@@ -171,7 +171,7 @@ void display(void)
 
 /*
  * ============================================================
- * Adiciona um triângulo 3D
+ * Desenha um triângulo 3D
  * ============================================================
  */
 
@@ -203,7 +203,7 @@ void draw_triangle(
 
 
     /*
-     * Transformação 3D.
+     * Carrega os três vértices no GTE.
      */
     gte_ldv3(
         a,
@@ -211,11 +211,15 @@ void draw_triangle(
         c
     );
 
+
+    /*
+     * Rotação + translação + perspectiva.
+     */
     gte_rtpt();
 
 
     /*
-     * Coordenadas projetadas.
+     * Coordenadas projetadas na tela.
      */
     gte_stsxy0(
         &poly->x0
@@ -231,7 +235,7 @@ void draw_triangle(
 
 
     /*
-     * Profundidade.
+     * Calcula profundidade média.
      */
     gte_avsz3();
 
@@ -249,6 +253,9 @@ void draw_triangle(
         depth = OT_LEN - 1;
 
 
+    /*
+     * Coloca o triângulo na Ordering Table.
+     */
     addPrim(
         db[db_active].ot + depth,
         poly
@@ -262,13 +269,15 @@ void draw_triangle(
 
 /*
  * ============================================================
- * Desenha uma parede retangular
+ * Desenha um retângulo 3D usando dois triângulos
  * ============================================================
  *
  * A -------- B
  * |          |
  * |          |
  * D -------- C
+ *
+ * Triângulos:
  *
  * A-B-C
  * A-C-D
@@ -307,8 +316,6 @@ void draw_wall(
 /*
  * ============================================================
  * SOUTH SILENCE
- *
- * Primeiro quarto 3D
  * ============================================================
  */
 
@@ -316,14 +323,32 @@ int main(void)
 {
     MATRIX matrix;
 
+
+    /*
+     * ========================================================
+     * ROTAÇÃO DA CÂMERA/ENQUADRAMENTO
+     *
+     * 0      = visão original
+     * 256    = pequena rotação no eixo Y
+     *
+     * Estamos usando valores fixos primeiro.
+     * Depois transformaremos isso em um sistema de câmera
+     * propriamente dito.
+     * ========================================================
+     */
+
     SVECTOR rotation =
     {
         0,
-        0,
+        256,
         0,
         0
     };
 
+
+    /*
+     * Translação da cena em relação ao ponto de visão.
+     */
     VECTOR position =
     {
         0,
@@ -412,7 +437,7 @@ int main(void)
 
     /*
      * ========================================================
-     * PAREDE LATERAL ESQUERDA
+     * PAREDE ESQUERDA
      * ========================================================
      */
 
@@ -451,7 +476,7 @@ int main(void)
 
     /*
      * ========================================================
-     * PAREDE LATERAL DIREITA
+     * PAREDE DIREITA
      * ========================================================
      */
 
@@ -488,24 +513,44 @@ int main(void)
     };
 
 
+    /*
+     * ========================================================
+     * INICIALIZAÇÃO
+     * ========================================================
+     */
+
     init_graphics();
 
+
+    /*
+     * ========================================================
+     * LOOP PRINCIPAL
+     * ========================================================
+     */
 
     while (1)
     {
         /*
-         * Matriz.
+         * Cria a matriz de rotação.
          */
         RotMatrix(
             &rotation,
             &matrix
         );
 
+
+        /*
+         * Adiciona a posição da cena.
+         */
         TransMatrix(
             &matrix,
             &position
         );
 
+
+        /*
+         * Envia a matriz para o GTE.
+         */
         gte_SetRotMatrix(
             &matrix
         );
@@ -584,8 +629,11 @@ int main(void)
 
 
         /*
-         * Troca de framebuffer.
+         * ====================================================
+         * MOSTRA O FRAME
+         * ====================================================
          */
+
         display();
     }
 
