@@ -115,41 +115,42 @@ int main(void)
         /*
          * TOPO
          *
-         * Fica mais distante que a frente,
-         * portanto será desenhado antes.
+         * Ordem dos vértices corrigida
+         * para a face ficar voltada para a câmera.
          */
         make_triangle(
             &ctx.polygons[0],
-            v[0], v[4], v[5],
+            v[0], v[5], v[4],
             100, 100, 100
         );
 
         make_triangle(
             &ctx.polygons[1],
-            v[0], v[5], v[1],
+            v[0], v[1], v[5],
             100, 100, 100
         );
 
         /*
          * LADO DIREITO
+         *
+         * Ordem dos vértices corrigida.
          */
         make_triangle(
             &ctx.polygons[2],
-            v[1], v[5], v[6],
+            v[1], v[6], v[5],
             70, 70, 70
         );
 
         make_triangle(
             &ctx.polygons[3],
-            v[1], v[6], v[2],
+            v[1], v[2], v[6],
             70, 70, 70
         );
 
         /*
          * FRENTE
          *
-         * É a face mais próxima,
-         * então será desenhada por último.
+         * Face mais próxima da câmera.
          */
         make_triangle(
             &ctx.polygons[4],
@@ -164,21 +165,28 @@ int main(void)
         );
 
         /*
-         * Painter's algorithm:
+         * Painter's algorithm.
          *
-         * maior índice = desenhado primeiro
-         * menor índice = desenhado depois
+         * Faces mais distantes:
+         * desenhadas primeiro.
          */
-
         addPrim(&ctx.ot[14], &ctx.polygons[0]);
         addPrim(&ctx.ot[14], &ctx.polygons[1]);
 
         addPrim(&ctx.ot[13], &ctx.polygons[2]);
         addPrim(&ctx.ot[13], &ctx.polygons[3]);
 
+        /*
+         * Frente:
+         * desenhada por último.
+         */
         addPrim(&ctx.ot[12], &ctx.polygons[4]);
         addPrim(&ctx.ot[12], &ctx.polygons[5]);
 
+        /*
+         * ClearOTagR cria a cadeia de trás
+         * para frente.
+         */
         DrawOTag(&ctx.ot[OT_LENGTH - 1]);
 
         VSync(0);
