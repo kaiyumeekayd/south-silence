@@ -7,7 +7,7 @@
 #define SCREEN_YRES 240
 
 #define OT_LEN 256
-#define PACKET_LEN 16384
+#define PACKET_LEN 65536
 
 typedef struct
 {
